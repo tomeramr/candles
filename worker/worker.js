@@ -1,6 +1,6 @@
 // קורא נרות פרו – שרת רישיונות (Cloudflare Worker)
 //
-// The paid app is never readable without a valid serial: pro/app.enc on GitHub is encrypted,
+// The paid app is never readable without a valid serial: pro/app.bin on GitHub is encrypted,
 // and only this server holds the key. For a valid Lemon Squeezy serial (or a guest code the
 // admin created) it decrypts the app, stamps it with the serial, and returns it.
 // Every serial has a log (activated, opened, expired, refused, device freed ...), shown in the
@@ -14,7 +14,7 @@
 //   LS_STORE_ID     plain: your Lemon Squeezy store id (required; keys from other stores are refused)
 //   LS_PRODUCT_ID   plain, optional: only accept keys of this product
 //   ALLOWED_ORIGIN  plain, optional: default https://tomeramr.github.io
-//   APP_URL         plain, optional: default https://tomeramr.github.io/candles/pro/app.enc
+//   APP_URL         plain, optional: default https://tomeramr.github.io/candles/pro/app.bin
 
 const LS = 'https://api.lemonsqueezy.com';
 const REVALIDATE_MS = 60 * 60 * 1000;   // light check (ping): ask Lemon Squeezy at most once an hour
@@ -195,15 +195,15 @@ async function guestRevoke(env, b) {
 }
 
 // ---------- the app itself ----------
-const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+function b64d(s) { const t = atob(s), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; }
 async function appHtml(env) {
   if (APP_CACHE && Date.now() - APP_CACHE.at < 10 * 60 * 1000) return APP_CACHE.html;
-  const url = (env.APP_URL || 'https://tomeramr.github.io/candles/pro/app.enc') + '?t=' + Math.floor(Date.now() / 600000);
+  const url = (env.APP_URL || 'https://tomeramr.github.io/candles/pro/app.bin') + '?t=' + Math.floor(Date.now() / 600000);
   const r = await fetch(url, { cf: { cacheTtl: 300 } });
   if (!r.ok) throw { reason: 'server_error', status: 502 };
-  const e = await r.json();
+  const buf = new Uint8Array(await r.arrayBuffer());
   const key = await crypto.subtle.importKey('raw', b64d(env.CONTENT_KEY), 'AES-GCM', false, ['decrypt']);
-  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(e.iv) }, key, b64d(e.ct));
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
   const html = await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
   APP_CACHE = { at: Date.now(), html };
   return html;

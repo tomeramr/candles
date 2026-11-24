@@ -90,7 +90,11 @@ def main():
     iv = os.urandom(12)
     ct = AESGCM(K).encrypt(iv, gzip.compress(html.encode('utf-8'), 9), None)
     # the encrypted app goes to pro/app.enc; only the license server holds its key and hands out the app
-    open(os.path.join(ROOT, 'pro', 'app.enc'), 'w', encoding='utf-8').write(json.dumps({'v': 2, 'kv': ver, 'iv': b(iv), 'ct': b(ct)}, separators=(',', ':')))
+    # binary (12-byte IV + ciphertext): the server reads it without base64 work, well inside the free plan's CPU limit
+    open(os.path.join(ROOT, 'pro', 'app.bin'), 'wb').write(iv + ct)
+    old = os.path.join(ROOT, 'pro', 'app.enc')
+    if os.path.exists(old):
+        os.remove(old)
     cfg = json.load(open(os.path.join(ROOT, 'pro', 'config.json'), encoding='utf-8'))
     data = json.dumps({'v': 2, 'cfg': cfg}, separators=(',', ':'), ensure_ascii=False)
     tpl = open(os.path.join(HERE, 'pro_gate_template.html'), encoding='utf-8').read()
