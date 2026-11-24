@@ -33,28 +33,29 @@ a{color:var(--accent)}
 </head>
 <body>
 <main class="card" id="box" aria-labelledby="ttl">
+  <p style="margin:0 0 8px;text-align:end"><a href="#" id="langT" lang="en">English</a></p>
   <h1 id="ttl">📊 קורא נרות פרו</h1>
-  <p class="sub">ניתוח טכני למניות בעברית · פותח על ידי תומר עמראן</p>
+  <p class="sub" data-t="sub">ניתוח טכני למניות בעברית · פותח על ידי תומר עמראן</p>
   <ul class="feat">
-    <li>קריאת נרות ומגמה: עולה או יורדת</li>
-    <li>המלצה טכנית: לונג או שורט, עם בדיקת דיוק לאחור</li>
-    <li>מכ"ם שווקים, התראות ושקלול אופציות</li>
+    <li data-t="f1">קריאת נרות ומגמה: עולה או יורדת</li>
+    <li data-t="f2">המלצה טכנית: לונג או שורט, עם בדיקת דיוק לאחור</li>
+    <li data-t="f3">מכ"ם שווקים, התראות ושקלול אופציות</li>
   </ul>
-  <a class="trial" id="buy" href="#" target="_blank" rel="noopener" hidden>🎁 התחל 5 ימי ניסיון חינם</a>
-  <p class="help" id="buyNote" hidden>אחרי ההרשמה יגיע אליך במייל <b>סיריאל</b> (מפתח רישיון). מדביקים אותו כאן:</p>
+  <a class="trial" id="buy" href="#" target="_blank" rel="noopener" hidden data-t="buy">🎁 התחל 5 ימי ניסיון חינם</a>
+  <p class="help" id="buyNote" hidden data-t="buyNote" data-h="1">אחרי ההרשמה יגיע אליך במייל <b>סיריאל</b> (מפתח רישיון). מדביקים אותו כאן:</p>
   <form id="f" autocomplete="off" novalidate>
-    <label for="k">סיריאל (מפתח רישיון) או קוד אורח</label>
+    <label for="k" data-t="lbl">סיריאל (מפתח רישיון) או קוד אורח</label>
     <input id="k" name="license" type="text" dir="ltr" inputmode="text" autocapitalize="none" spellcheck="false" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" aria-describedby="msg" required>
-    <button id="go" type="submit">כניסה</button>
+    <button id="go" type="submit" data-t="go">כניסה</button>
   </form>
   <div id="msg" role="status" aria-live="polite"></div>
   <nav class="links" aria-label="קישורים">
-    <a href="terms.html">תקנון ותנאי שימוש</a>
-    <a href="accessibility.html">הצהרת נגישות</a>
-    <a id="portal" href="#" target="_blank" rel="noopener" hidden>ניהול מנוי וביטול</a>
-    <a id="contact" href="#" hidden>צור קשר</a>
+    <a href="terms.html" data-t="terms">תקנון ותנאי שימוש</a>
+    <a href="accessibility.html" data-t="a11y">הצהרת נגישות</a>
+    <a id="portal" href="#" target="_blank" rel="noopener" hidden data-t="portal">ניהול מנוי וביטול</a>
+    <a id="contact" href="#" hidden data-t="contact">צור קשר</a>
   </nav>
-  <p class="disc">⚠️ הכלי מציג ניתוח טכני אוטומטי לצורכי מידע בלבד, ואינו ייעוץ השקעות.</p>
+  <p class="disc" data-t="disc">⚠️ הכלי מציג ניתוח טכני אוטומטי לצורכי מידע בלבד, ואינו ייעוץ השקעות.</p>
 </main>
 <script id="gd" type="application/json">__GATE_DATA__</script>
 <script>
@@ -64,6 +65,24 @@ const $=id=>document.getElementById(id);
 const LSg=k=>{try{return localStorage.getItem(k)}catch(e){return null}},LSs=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},LSr=k=>{try{localStorage.removeItem(k)}catch(e){}};
 const msg=(t,c)=>{const m=$('msg');m.textContent=t||'';m.className=c||''};
 const GRACE=72*3600e3; // offline: the last copy keeps working for 3 days since the last successful check
+let LANG='he';try{LANG=localStorage.getItem('cr_lang')==='en'?'en':'he'}catch(e){}
+const EN={sub:'Technical analysis for stocks · developed by Tomer Amran',f1:'Candle reading and trend: up or down',f2:'Technical recommendation: long or short, with a backtest of its accuracy',f3:'Market radar, alerts and options weighting',
+  buy:'🎁 Start a 5-day free trial',buyNote:'After you sign up you\u2019ll get a <b>serial</b> (license key) by email. Paste it here:',lbl:'Serial (license key) or guest code',go:'Sign in',
+  terms:'Terms of use (Hebrew)',a11y:'Accessibility statement (Hebrew)',portal:'Manage or cancel subscription',contact:'Contact',disc:'⚠️ The tool shows automated technical analysis for information only, and is not investment advice.'};
+const MSG_EN={
+  invalid:'❌ Serial not found. Copy all of it from the email and try again.',
+  bad_key:'❌ This doesn\u2019t look like a serial. Copy all of it from the email.',
+  expired:'⏰ The serial has expired. You can renew the subscription via "Manage subscription".',
+  disabled:'🚫 This serial was revoked. For questions, use "Contact".',
+  device_limit:'📱 The serial is already active on the maximum number of devices. Press "Sign out" on one of the other devices and try again.',
+  wrong_product:'❌ This serial doesn\u2019t belong to Candle Reader Pro.',
+  rate:'⏳ Too many attempts. Wait a minute and try again.',
+  ls_unavailable:'⚠️ The payment server isn\u2019t available right now. Try again in a few minutes.',
+  server_error:'⚠️ The license server isn\u2019t available right now. Try again in a few minutes.',
+  offline:'📶 No internet connection. A connection is needed to verify the serial.',
+  not_ready:'🛠️ The system is still being set up. Try again soon.',
+  logout:'👋 You signed out on this device.',
+  empty:'Paste the serial from the email.',checking:'⏳ Checking the serial…',verifying:'⏳ Verifying the serial…',inn:'✅ Signing in…'};
 const MSG={
   invalid:'❌ הסיריאל לא נמצא. העתק אותו במלואו מהמייל ונסה שוב.',
   bad_key:'❌ זה לא נראה כמו סיריאל. העתק אותו במלואו מהמייל.',
@@ -76,11 +95,16 @@ const MSG={
   server_error:'⚠️ שרת הרישיונות לא זמין כרגע. נסה שוב בעוד כמה דקות.',
   offline:'📶 אין חיבור לאינטרנט. צריך חיבור כדי לאמת את הסיריאל.',
   not_ready:'🛠️ המערכת עוד בהקמה. נסה שוב בקרוב.',
-  logout:'👋 יצאת מהחשבון במכשיר הזה.'
+  logout:'👋 יצאת מהחשבון במכשיר הזה.',
+  empty:'הדבק את הסיריאל מהמייל.',checking:'⏳ בודק את הסיריאל…',verifying:'⏳ מאמת את הסיריאל…',inn:'✅ נכנס…'
 };
+if(LANG==='en'){Object.assign(MSG,MSG_EN);document.documentElement.lang='en';document.documentElement.dir='ltr';document.title='Candle Reader Pro – sign in';
+  document.querySelectorAll('[data-t]').forEach(e=>{const v=EN[e.dataset.t];if(v!=null){if(e.dataset.h)e.innerHTML=v;else e.textContent=v}});
+  $('ttl').textContent='📊 Candle Reader Pro';$('langT').textContent='עברית';$('langT').lang='he'}
+$('langT').addEventListener('click',e=>{e.preventDefault();LSs('cr_lang',LANG==='en'?'he':'en');location.reload()});
 const SOFT=['offline','server_error','ls_unavailable','rate'];
-const devName=()=>{const u=navigator.userAgent;const os=/Android/i.test(u)?'אנדרואיד':/iPhone|iPad|iPod/i.test(u)?'אייפון':/Mac/i.test(u)?'מק':/Windows/i.test(u)?'מחשב Windows':'מכשיר';
-  const br=/Edg\//.test(u)?'Edge':/SamsungBrowser/.test(u)?'Samsung':/Chrome\//.test(u)?'Chrome':/Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'דפדפן';return os+' · '+br};
+const devName=()=>{const u=navigator.userAgent;const os=/Android/i.test(u)?'Android':/iPhone|iPad|iPod/i.test(u)?'iPhone':/Mac/i.test(u)?'Mac':/Windows/i.test(u)?'Windows':'Device';
+  const br=/Edg\//.test(u)?'Edge':/SamsungBrowser/.test(u)?'Samsung':/Chrome\//.test(u)?'Chrome':/Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'Browser';return os+' · '+br};
 let CFG=D.cfg||{};
 async function loadCfg(){try{const r=await fetch('config.json',{cache:'no-store'});if(r.ok)CFG={...CFG,...await r.json()}}catch(e){}
   const safe=u=>/^(https:\/\/|http:\/\/localhost[:\/])[^\s"'<>]+$/.test(u||'');
@@ -97,32 +121,32 @@ async function call(path,body){if(!CFG.api)throw {reason:'not_ready'};
 function openApp(html,s,j){
   try{sessionStorage.setItem('pro_key',s.key);sessionStorage.setItem('pro_iid',s.iid||'');sessionStorage.setItem('pro_api',CFG.api||'');sessionStorage.setItem('pro_portal',CFG.portal||'');sessionStorage.setItem('pro_name',s.name||'')}catch(e){}
   document.open();document.write(html);document.close()}
-function keep(s,html){s.ok=Date.now();LSs('pro_saved',JSON.stringify(s));LSs('pro_html',html)}
-function wipe(){LSr('pro_saved');LSr('pro_html');try{['pro_key','pro_iid','pro_api','pro_portal','pro_name'].forEach(k=>sessionStorage.removeItem(k))}catch(e){}}
+function keep(s,html){s.ok=Date.now();LSs('pro_saved',JSON.stringify(s));LSr('pro_html');LSs('pro_html_'+LANG,html)}
+function wipe(){LSr('pro_saved');['pro_html','pro_html_he','pro_html_en'].forEach(LSr);try{['pro_key','pro_iid','pro_api','pro_portal','pro_name'].forEach(k=>sessionStorage.removeItem(k))}catch(e){}}
 (async()=>{
   await loadCfg();
   const note=LSg('pro_msg');if(note){LSr('pro_msg');msg(MSG[note]||MSG.invalid,note==='logout'?'ok':'bad')}
   let s=null;try{s=JSON.parse(LSg('pro_saved')||'null')}catch(e){}
   if(!s||!s.key)return;
-  $('k').value=s.key;msg('⏳ בודק את הסיריאל…');
+  $('k').value=s.key;msg(MSG.checking);
   try{
-    const j=await call('/app',{key:s.key,iid:s.iid,dev:devName()});
+    const j=await call('/app',{key:s.key,iid:s.iid,dev:devName(),lang:LANG});
     if(!j.ok){if(SOFT.includes(j.reason))throw {reason:j.reason};wipe();msg(MSG[j.reason]||MSG.invalid,'bad');return}
     keep(s,j.html);openApp(j.html,s,j);
   }catch(e){
-    const r=e&&e.reason;const cached=LSg('pro_html');
+    const r=e&&e.reason;const cached=LSg('pro_html_'+LANG);
     if(SOFT.includes(r)&&cached&&Date.now()-(s.ok||0)<GRACE){openApp(cached,s);return}
     msg(MSG[r]||MSG.server_error,'bad')}
 })();
 $('f').addEventListener('submit',async ev=>{ev.preventDefault();
   const key=$('k').value.trim().toUpperCase().startsWith('G-')?$('k').value.trim().toUpperCase():$('k').value.trim();
-  if(!key){msg('הדבק את הסיריאל מהמייל.','bad');$('k').focus();return}
+  if(!key){msg(MSG.empty,'bad');$('k').focus();return}
   if(!/^[A-Za-z0-9-]{8,80}$/.test(key)){msg(MSG.bad_key,'bad');$('k').focus();return}
-  const btn=$('go');btn.disabled=true;msg('⏳ מאמת את הסיריאל…');
+  const btn=$('go');btn.disabled=true;msg(MSG.verifying);
   let old=null;try{old=JSON.parse(LSg('pro_saved')||'null')}catch(e){}
-  try{const j=await call('/unlock',{key,iid:old&&old.key===key?old.iid:'',dev:devName()});
+  try{const j=await call('/unlock',{key,iid:old&&old.key===key?old.iid:'',dev:devName(),lang:LANG});
     if(!j.ok)throw {reason:j.reason||'invalid'};
-    const s={key,iid:j.iid||'',name:j.name||''};keep(s,j.html);msg('✅ נכנס…','ok');openApp(j.html,s,j)}
+    const s={key,iid:j.iid||'',name:j.name||''};keep(s,j.html);msg(MSG.inn,'ok');openApp(j.html,s,j)}
   catch(e){msg(MSG[e&&e.reason]||MSG.server_error,'bad');btn.disabled=false;$('k').focus()}});
 })();
 </script>

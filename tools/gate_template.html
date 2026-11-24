@@ -51,7 +51,8 @@ async function kek(u,pw,salt){const base=await crypto.subtle.importKey('raw',te(
 async function unwrap(slot,u,pw){const k=await kek(u,pw,b64d(slot.s));return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(slot.i),additionalData:te(slot.a||'')},k,b64d(slot.w)))}
 async function openApp(raw,role,exp,u,iid){
   const key=await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']);
-  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(D.iv)},key,b64d(D.ct));
+  let L='he';try{L=localStorage.getItem('cr_lang')==='en'&&D.ct_en?'en':'he'}catch(e){}
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(L==='en'?D.iv_en:D.iv)},key,b64d(L==='en'?D.ct_en:D.ct));
   const html=await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
   try{sessionStorage.setItem('gate_k',b64e(raw));sessionStorage.setItem('gate_role',role);sessionStorage.setItem('gate_exp',exp||'');sessionStorage.setItem('gate_user',u||'');sessionStorage.setItem('gate_it',String(D.it));sessionStorage.setItem('gate_iid',iid||'')}catch(e){}
   document.open();document.write(html);document.close()}

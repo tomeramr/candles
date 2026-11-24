@@ -21,7 +21,7 @@ const REVALIDATE_MS = 60 * 60 * 1000;   // light check (ping): ask Lemon Squeezy
 const APP_CHECK_MS = 10 * 60 * 1000;    // opening the app: re-check if the last check is older than 10 min
 const ONLINE_MS = 5 * 60 * 1000;
 const LIMITS = { unlock: 8, app: 12, ping: 30, release: 10, admin: 60 }; // requests per minute per IP
-let APP_CACHE = null; // {at, html}
+let APP_CACHE = {}; // per language: {at, html}
 
 export default {
   async fetch(req, env, ctx) {
@@ -70,6 +70,7 @@ async function body(req) {
     iid: String((b && b.iid) || '').trim().slice(0, 80),
     dev: String((b && b.dev) || 'מכשיר').replace(/[<>]/g, '').slice(0, 60),
     ver: /^[0-9][0-9.]{0,15}$/.test(String((b && b.ver) || '')) ? String(b.ver) : '',
+    lang: b && b.lang === 'en' ? 'en' : 'he',
   };
 }
 async function sha(s) {
@@ -196,16 +197,19 @@ async function guestRevoke(env, b) {
 
 // ---------- the app itself ----------
 function b64d(s) { const t = atob(s), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; }
-async function appHtml(env) {
-  if (APP_CACHE && Date.now() - APP_CACHE.at < 10 * 60 * 1000) return APP_CACHE.html;
-  const url = (env.APP_URL || 'https://tomeramr.github.io/candles/pro/app.bin') + '?t=' + Math.floor(Date.now() / 600000);
+async function appHtml(env, lang) {
+  const L = lang === 'en' ? 'en' : 'he';
+  const c = APP_CACHE[L];
+  if (c && Date.now() - c.at < 10 * 60 * 1000) return c.html;
+  const base = env.APP_URL || 'https://tomeramr.github.io/candles/pro/app.bin';
+  const url = (L === 'en' ? base.replace(/app\.bin$/, 'app_en.bin') : base) + '?t=' + Math.floor(Date.now() / 600000);
   const r = await fetch(url, { cf: { cacheTtl: 300 } });
   if (!r.ok) throw { reason: 'server_error', status: 502 };
   const buf = new Uint8Array(await r.arrayBuffer());
   const key = await crypto.subtle.importKey('raw', b64d(env.CONTENT_KEY), 'AES-GCM', false, ['decrypt']);
   const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
   const html = await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
-  APP_CACHE = { at: Date.now(), html };
+  APP_CACHE[L] = { at: Date.now(), html };
   return html;
 }
 function stamp(html, who) {
@@ -247,7 +251,7 @@ async function unlock(env, b) {
     const v = await validate(env, b, 0);
     if (!v.ok) return v;
     await log(env, v.lic, v.who.tail, v.who.label, 'open', dev);
-    return { ok: true, iid: '', name: v.who.label, guest: true, until: v.who.until, html: stamp(await appHtml(env), v.who) };
+    return { ok: true, iid: '', name: v.who.label, guest: true, until: v.who.until, html: stamp(await appHtml(env, b.lang), v.who) };
   }
   const now = Date.now();
   let j;
@@ -268,7 +272,7 @@ async function unlock(env, b) {
   const w = await remember(env, lic, j, iid, dev, ver, now);
   await log(env, lic, w.tail, w.email, 'open', dev);
   const who = { label: w.email || w.name || 'מנוי', tail: w.tail };
-  return { ok: true, iid, name: w.name, email: w.email, plan: w.plan, expires: (j.license_key && j.license_key.expires_at) || null, html: stamp(await appHtml(env), who) };
+  return { ok: true, iid, name: w.name, email: w.email, plan: w.plan, expires: (j.license_key && j.license_key.expires_at) || null, html: stamp(await appHtml(env, b.lang), who) };
 }
 
 async function app(env, b) {
@@ -277,7 +281,7 @@ async function app(env, b) {
   // log one "open" per device per hour at most
   const last = await env.DB.prepare("SELECT t FROM events WHERE lic=?1 AND ev='open' ORDER BY t DESC LIMIT 1").bind(v.lic).first();
   if (!last || Date.now() - last.t > 3600e3) await log(env, v.lic, v.who.tail, v.who.label, 'open', b.dev);
-  return { ok: true, guest: !!v.who.guest, until: v.who.until || null, html: stamp(await appHtml(env), v.who) };
+  return { ok: true, guest: !!v.who.guest, until: v.who.until || null, html: stamp(await appHtml(env, b.lang), v.who) };
 }
 
 async function ping(env, b) {

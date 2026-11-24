@@ -2,7 +2,7 @@
 
   GATE_PW=<admin password> python3 tools/gate.py extract index.html source.html
       decrypt the deployed page back to the plain app (needs the admin password)
-  GATE_PW=<admin password> python3 tools/gate.py build source.html index.html [--rotate]
+  GATE_PW=<admin password> [GATE_EN=source_en.html] python3 tools/gate.py build source.html index.html [--rotate]
       encrypt the app into index.html. Reuses the content key of the current index.html
       (so remembered logins and share links keep working); --rotate makes a new key,
       which cancels every share link and remembered login.
@@ -29,9 +29,13 @@ def build(src,out,rotate=False):
     pw=os.environ['GATE_PW']
     K=os.urandom(32) if rotate or not os.path.exists(out) or '"slots"' not in open(out,encoding='utf-8').read() else key_from(out,pw)[0]
     iv=os.urandom(12);ct=AESGCM(K).encrypt(iv,gzip.compress(open(src,'rb').read(),9),None)
+    en=os.environ.get('GATE_EN')  # optional English build of the same app
+    extra={}
+    if en:
+        iv2=os.urandom(12);extra={'iv_en':b(iv2),'ct_en':b(AESGCM(K).encrypt(iv2,gzip.compress(open(en,'rb').read(),9),None))}
     salt=os.urandom(16);i2=os.urandom(12)
     slots=[{'u':ADMIN,'role':'admin','a':'','s':b(salt),'i':b(i2),'w':b(AESGCM(kek(ADMIN,pw,salt)).encrypt(i2,K,b''))}]
-    data=json.dumps({'v':1,'it':IT,'iv':b(iv),'ct':b(ct),'slots':slots},separators=(',',':'))
+    data=json.dumps({'v':1,'it':IT,'iv':b(iv),'ct':b(ct),**extra,'slots':slots},separators=(',',':'))
     tpl=open(os.path.join(HERE,'gate_template.html'),encoding='utf-8').read()
     open(out,'w',encoding='utf-8').write(tpl.replace('__GATE_DATA__',data));print('built',out,'(new key)' if rotate else '')
 if __name__=='__main__':

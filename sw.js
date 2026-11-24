@@ -1,5 +1,5 @@
 // Network-first: always load the newest version when online, fall back to cache offline.
-const CACHE='candles-v32';
+const CACHE='candles-v33';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{}))});
 self.addEventListener('activate',e=>{e.waitUntil((async()=>{for(const k of await caches.keys())if(k!==CACHE&&!k.startsWith('candles-pro'))await caches.delete(k);await self.clients.claim()})())});

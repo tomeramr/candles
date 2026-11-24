@@ -55,7 +55,7 @@ def cut_script(html, marker):
     return html[:s] + html[e:], True
 
 
-def transform(src):
+def transform(src, lang='he'):
     out = src
     for div in ('gateWrap', 'proAdminWrap'):
         out, _ = cut_div(out, div)
@@ -63,7 +63,8 @@ def transform(src):
         out, _ = cut_script(out, marker)
     if 'gateWrap' in out or "gate_role" in out:
         raise SystemExit('admin parts still present – check the markers in build_pro.py')
-    out = re.sub(r'<title>[^<]*</title>', '<title>קורא נרות פרו – ניתוח טכני ושווקים</title>', out, count=1)
+    title = 'Candle Reader Pro – technical analysis and markets' if lang == 'en' else 'קורא נרות פרו – ניתוח טכני ושווקים'
+    out = re.sub(r'<title>[^<]*</title>', f'<title>{title}</title>', out, count=1)
     a11y = ('<style>:focus-visible{outline:3px solid #ffb000!important;outline-offset:2px}'
             '@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}</style>')
     h = out.find('</head>')
@@ -87,11 +88,15 @@ def main():
     k, D = gate.key_from(page, pw)
     src = gzip.decompress(AESGCM(k).decrypt(base64.b64decode(D['iv']), base64.b64decode(D['ct']), None)).decode('utf-8')
     html = transform(src)
-    iv = os.urandom(12)
-    ct = AESGCM(K).encrypt(iv, gzip.compress(html.encode('utf-8'), 9), None)
-    # the encrypted app goes to pro/app.enc; only the license server holds its key and hands out the app
+    # the encrypted app goes to pro/app.bin (app_en.bin for English); only the license server holds its key
     # binary (12-byte IV + ciphertext): the server reads it without base64 work, well inside the free plan's CPU limit
-    open(os.path.join(ROOT, 'pro', 'app.bin'), 'wb').write(iv + ct)
+    def seal(h, name):
+        iv = os.urandom(12)
+        open(os.path.join(ROOT, 'pro', name), 'wb').write(iv + AESGCM(K).encrypt(iv, gzip.compress(h.encode('utf-8'), 9), None))
+    seal(html, 'app.bin')
+    if D.get('ct_en'):
+        src_en = gzip.decompress(AESGCM(k).decrypt(base64.b64decode(D['iv_en']), base64.b64decode(D['ct_en']), None)).decode('utf-8')
+        seal(transform(src_en, 'en'), 'app_en.bin')
     old = os.path.join(ROOT, 'pro', 'app.enc')
     if os.path.exists(old):
         os.remove(old)
