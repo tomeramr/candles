@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="icon-192.png">
+<title>הצהרת נגישות – קורא נרות פרו</title>
+<style>
+:root{--bg:#f6f7f9;--ink:#14171c;--muted:#56606c;--accent:#2457c5;--focus:#ffb000}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1216;--ink:#e8ebef;--muted:#a7b0bb;--accent:#6c9cff}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Heebo,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;line-height:1.7}
+main{max-width:760px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.7rem;margin:0 0 4px}h2{font-size:1.2rem;margin:26px 0 6px}
+.sub{color:var(--muted);margin:0 0 18px}ul{padding-inline-start:22px}
+a{color:var(--accent)}:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.top{display:inline-block;margin-bottom:14px}
+</style>
+</head>
+<body>
+<main>
+<a class="top" href="./">→ חזרה לקורא נרות פרו</a>
+<h1>הצהרת נגישות</h1>
+<p class="sub">עודכנה לאחרונה: [תאריך פרסום]</p>
+
+<p>אנחנו רוצים שכל אחד יוכל להשתמש בקורא נרות פרו, כולל אנשים עם מוגבלות. השירות נבנה בהשראת התקן הישראלי 5568 וההנחיות הבינלאומיות WCAG 2.0 ברמה AA, ואנחנו ממשיכים לשפר אותו.</p>
+
+<h2>מה כבר נעשה</h2>
+<ul>
+<li>האתר כתוב בעברית, מימין לשמאל, עם הגדרת שפה תקינה לקוראי מסך.</li>
+<li>אפשר לנווט במקלדת (Tab, Enter, רווח), ומסומנת מסגרת ברורה סביב הרכיב שבפוקוס.</li>
+<li>בעמוד הכניסה, לשדות יש תוויות, והודעות שגיאה והצלחה מוקראות אוטומטית בקוראי מסך.</li>
+<li>הטקסט ניתן להגדלה בהגדרות הדפדפן עד 200% בלי לאבד תוכן.</li>
+<li>יש מצב כהה אוטומטי לפי הגדרות המכשיר, ומצב "הפחתת תנועה" מכובד.</li>
+<li>המידע בגרפים מוצג גם בטקסט (מגמה, המלצה, מחיר), ולא רק בצבע.</li>
+</ul>
+
+<h2>מגבלות ידועות</h2>
+<ul>
+<li>גרפי הנרות עצמם הם תמונה ויזואלית, וקשה להנגיש אותם במלואם לקוראי מסך. התוצאות שלהם מופיעות בטקסט לידם.</li>
+<li>בתוך הכלי עצמו, חלק מההודעות המתעדכנות עדיין לא מוקראות אוטומטית בקוראי מסך. אנחנו עובדים על זה.</li>
+<li>חלק מהתכנים מגיעים מספקי נתונים חיצוניים, ואין לנו שליטה על אופן הצגתם.</li>
+</ul>
+
+<h2>נתקלת בבעיה?</h2>
+<p>אם משהו לא נגיש לך, נשמח לשמוע ולתקן. אפשר לפנות לרכז הנגישות:</p>
+<ul>
+<li>שם: תומר עמראן</li>
+<li>דוא"ל: <span id="mail">[כתובת דוא"ל]</span></li>
+<li>טלפון: [טלפון]</li>
+</ul>
+<p>כדאי לציין בפנייה מה ניסית לעשות, באיזה מכשיר ודפדפן, ואיזו טכנולוגיה מסייעת הפעלת. נשתדל לענות בתוך 5 ימי עסקים.</p>
+</main>
+<script>
+fetch('config.json',{cache:'no-store'}).then(r=>r.ok?r.json():{}).then(c=>{if(c&&c.contact&&!/^https?:/.test(c.contact)){const a=document.createElement('a');a.href='mailto:'+c.contact;a.textContent=c.contact;a.dir='ltr';const m=document.getElementById('mail');m.textContent='';m.appendChild(a)}}).catch(()=>{});
+</script>
+</body>
+</html>

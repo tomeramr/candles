@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2f6fec">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="robots" content="noindex,nofollow">
+<title>קורא נרות – כניסה</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#14171c;--muted:#626b78;--line:#e3e6ea;--accent:#2f6fec;--down:#d93636;--up:#13a058}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1216;--card:#181c22;--ink:#e8ebef;--muted:#9aa3ae;--line:#2a3039}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Heebo,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;width:100%;max-width:380px;box-shadow:0 6px 24px rgba(0,0,0,.06)}
+h1{margin:0 0 4px;font-size:24px}.sub{color:var(--muted);margin:0 0 16px;font-size:14px}
+label{display:block;font-size:14px;color:var(--muted);margin-top:10px}
+input[type=text],input[type=password]{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:var(--bg);color:var(--ink);margin-top:4px}
+button{width:100%;margin-top:16px;padding:13px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-size:16px;font-weight:700}
+button:disabled{opacity:.6}
+.row{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px}
+#msg{margin-top:12px;font-size:14px;min-height:20px}.bad{color:var(--down)}.ok{color:var(--up)}
+.note{background:var(--bg);border-radius:10px;padding:8px 10px;font-size:13px;color:var(--muted);margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="card" id="box">
+  <h1>📊 קורא נרות</h1>
+  <p class="sub">פותח על ידי תומר עמראן · כניסה למשתמשים מורשים בלבד</p>
+  <form id="f" autocomplete="on">
+    <label>שם משתמש<input type="text" id="u" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+    <label>סיסמה<input type="password" id="p" autocomplete="current-password" required></label>
+    <div class="row"><input type="checkbox" id="rem" checked> <label for="rem" style="margin:0">זכור אותי במכשיר הזה</label></div>
+    <button id="go" type="submit">כניסה</button>
+  </form>
+  <div id="msg"></div>
+</div>
+<script id="gd" type="application/json">__GATE_DATA__</script>
+<script>
+(function(){
+const D=JSON.parse(document.getElementById('gd').textContent);
+const te=s=>new TextEncoder().encode(s);
+const b64d=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u};
+const b64e=u=>{let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
+const LSg=k=>{try{return localStorage.getItem(k)}catch(e){return null}},LSs=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},LSr=k=>{try{localStorage.removeItem(k)}catch(e){}};
+const msg=(t,c)=>{const m=document.getElementById('msg');m.textContent=t||'';m.className=c||''};
+async function kek(u,pw,salt){const base=await crypto.subtle.importKey('raw',te(u.trim().toLowerCase()+'\n'+pw),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:D.it,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt'])}
+async function unwrap(slot,u,pw){const k=await kek(u,pw,b64d(slot.s));return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(slot.i),additionalData:te(slot.a||'')},k,b64d(slot.w)))}
+async function openApp(raw,role,exp,u,iid){
+  const key=await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']);
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(D.iv)},key,b64d(D.ct));
+  const html=await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  try{sessionStorage.setItem('gate_k',b64e(raw));sessionStorage.setItem('gate_role',role);sessionStorage.setItem('gate_exp',exp||'');sessionStorage.setItem('gate_user',u||'');sessionStorage.setItem('gate_it',String(D.it));sessionStorage.setItem('gate_iid',iid||'')}catch(e){}
+  document.open();document.write(html);document.close()}
+const expired=exp=>exp&&Date.now()>Date.parse(exp);
+// remembered login
+(async()=>{const sv=LSg('gate_saved');if(!sv)return;let o;try{o=JSON.parse(sv)}catch(e){LSr('gate_saved');return}
+  if(o.role!=='admin'){LSr('gate_saved');return}
+  const go=async()=>{msg('⏳ פותח…');try{await openApp(b64d(o.k),o.role,o.exp,o.u,o.iid)}catch(e){LSr('gate_saved');msg('הגרסה התעדכנה. צריך להתחבר שוב.','bad')}};
+  go()})();
+document.getElementById('f').addEventListener('submit',async ev=>{ev.preventDefault();
+  const u=document.getElementById('u').value.trim().toLowerCase(),pw=document.getElementById('p').value,rem=document.getElementById('rem').checked;
+  if(!u||!pw)return;const btn=document.getElementById('go');btn.disabled=true;msg('⏳ בודק…');
+  try{let raw=null,role=null,exp='';
+    let iid='';for(const s of D.slots){if(s.u!==u)continue;try{raw=await unwrap(s,u,pw);role=s.role||'admin';exp=s.a||'';break}catch(e){}}
+    if(!raw){msg('❌ שם משתמש או סיסמה שגויים.','bad');btn.disabled=false;return}
+    if(rem)LSs('gate_saved',JSON.stringify({k:b64e(raw),role,exp,u,iid}));else LSr('gate_saved');
+    msg('✅ נכנס…','ok');await openApp(raw,role,exp,u,iid)}
+  catch(e){msg('⚠️ שגיאה בפתיחה. נסה שוב.','bad');btn.disabled=false}});
+})();
+</script>
+</body>
+</html>

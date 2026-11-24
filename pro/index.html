@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2f6fec">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="קורא נרות פרו – ניתוח טכני למניות בעברית: קריאת נרות, מגמות, המלצה טכנית לונג או שורט. 5 ימי ניסיון חינם.">
+<title>קורא נרות פרו – כניסה</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#14171c;--muted:#56606c;--line:#d5dae0;--accent:#2457c5;--down:#b42323;--up:#0b7a43;--focus:#ffb000}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1216;--card:#181c22;--ink:#e8ebef;--muted:#a7b0bb;--line:#38404b;--accent:#6c9cff;--down:#ff7b7b;--up:#4fd18b}}
+*{box-sizing:border-box}html{font-size:100%}body{margin:0;background:var(--bg);color:var(--ink);font-family:Heebo,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;line-height:1.5}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;width:100%;max-width:420px;box-shadow:0 6px 24px rgba(0,0,0,.06)}
+h1{margin:0 0 4px;font-size:1.6rem}.sub{color:var(--muted);margin:0 0 16px;font-size:.95rem}
+.trial{display:block;text-align:center;padding:14px;border-radius:12px;background:var(--up);color:#fff;font-weight:800;font-size:1.05rem;text-decoration:none}
+.help{color:var(--muted);font-size:.9rem;margin:14px 0 4px}
+label{display:block;font-weight:700;margin-top:6px}
+input{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:1rem;background:var(--bg);color:var(--ink);margin-top:4px;font-family:ui-monospace,Menlo,Consolas,monospace}
+button{width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-size:1rem;font-weight:700;cursor:pointer}
+button:disabled{opacity:.6}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+#msg{margin-top:12px;font-size:.95rem;min-height:22px}.bad{color:var(--down)}.ok{color:var(--up)}
+.links{margin-top:16px;font-size:.9rem;display:flex;flex-wrap:wrap;gap:6px 14px}
+.disc{margin:12px 0 0;font-size:.8rem;color:var(--muted)}
+.feat{margin:0 0 14px;padding-inline-start:18px;font-size:.95rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<main class="card" id="box" aria-labelledby="ttl">
+  <h1 id="ttl">📊 קורא נרות פרו</h1>
+  <p class="sub">ניתוח טכני למניות בעברית · פותח על ידי תומר עמראן</p>
+  <ul class="feat">
+    <li>קריאת נרות ומגמה: עולה או יורדת</li>
+    <li>המלצה טכנית: לונג או שורט, עם בדיקת דיוק לאחור</li>
+    <li>מכ"ם שווקים, התראות ושקלול אופציות</li>
+  </ul>
+  <a class="trial" id="buy" href="#" target="_blank" rel="noopener" hidden>🎁 התחל 5 ימי ניסיון חינם</a>
+  <p class="help" id="buyNote" hidden>אחרי ההרשמה יגיע אליך במייל <b>סיריאל</b> (מפתח רישיון). מדביקים אותו כאן:</p>
+  <form id="f" autocomplete="off" novalidate>
+    <label for="k">סיריאל (מפתח רישיון) או קוד אורח</label>
+    <input id="k" name="license" type="text" dir="ltr" inputmode="text" autocapitalize="none" spellcheck="false" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" aria-describedby="msg" required>
+    <button id="go" type="submit">כניסה</button>
+  </form>
+  <div id="msg" role="status" aria-live="polite"></div>
+  <nav class="links" aria-label="קישורים">
+    <a href="terms.html">תקנון ותנאי שימוש</a>
+    <a href="accessibility.html">הצהרת נגישות</a>
+    <a id="portal" href="#" target="_blank" rel="noopener" hidden>ניהול מנוי וביטול</a>
+    <a id="contact" href="#" hidden>צור קשר</a>
+  </nav>
+  <p class="disc">⚠️ הכלי מציג ניתוח טכני אוטומטי לצורכי מידע בלבד, ואינו ייעוץ השקעות.</p>
+</main>
+<script id="gd" type="application/json">{"v":2,"cfg":{"api":"","checkout":"","portal":"","contact":""}}</script>
+<script>
+(function(){
+const D=JSON.parse(document.getElementById('gd').textContent);
+const $=id=>document.getElementById(id);
+const LSg=k=>{try{return localStorage.getItem(k)}catch(e){return null}},LSs=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},LSr=k=>{try{localStorage.removeItem(k)}catch(e){}};
+const msg=(t,c)=>{const m=$('msg');m.textContent=t||'';m.className=c||''};
+const GRACE=72*3600e3; // offline: the last copy keeps working for 3 days since the last successful check
+const MSG={
+  invalid:'❌ הסיריאל לא נמצא. העתק אותו במלואו מהמייל ונסה שוב.',
+  bad_key:'❌ זה לא נראה כמו סיריאל. העתק אותו במלואו מהמייל.',
+  expired:'⏰ תוקף הסיריאל הסתיים. אפשר לחדש את המנוי בקישור "ניהול מנוי".',
+  disabled:'🚫 הסיריאל הזה בוטל. לבירור אפשר לפנות דרך "צור קשר".',
+  device_limit:'📱 הסיריאל כבר פעיל על מספר המכשירים המרבי. לחץ "יציאה" באחד המכשירים האחרים ונסה שוב.',
+  wrong_product:'❌ הסיריאל הזה לא שייך לקורא נרות פרו.',
+  rate:'⏳ יותר מדי ניסיונות. חכה דקה ונסה שוב.',
+  ls_unavailable:'⚠️ שרת התשלומים לא זמין כרגע. נסה שוב בעוד כמה דקות.',
+  server_error:'⚠️ שרת הרישיונות לא זמין כרגע. נסה שוב בעוד כמה דקות.',
+  offline:'📶 אין חיבור לאינטרנט. צריך חיבור כדי לאמת את הסיריאל.',
+  not_ready:'🛠️ המערכת עוד בהקמה. נסה שוב בקרוב.',
+  logout:'👋 יצאת מהחשבון במכשיר הזה.'
+};
+const SOFT=['offline','server_error','ls_unavailable','rate'];
+const devName=()=>{const u=navigator.userAgent;const os=/Android/i.test(u)?'אנדרואיד':/iPhone|iPad|iPod/i.test(u)?'אייפון':/Mac/i.test(u)?'מק':/Windows/i.test(u)?'מחשב Windows':'מכשיר';
+  const br=/Edg\//.test(u)?'Edge':/SamsungBrowser/.test(u)?'Samsung':/Chrome\//.test(u)?'Chrome':/Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'דפדפן';return os+' · '+br};
+let CFG=D.cfg||{};
+async function loadCfg(){try{const r=await fetch('config.json',{cache:'no-store'});if(r.ok)CFG={...CFG,...await r.json()}}catch(e){}
+  const safe=u=>/^(https:\/\/|http:\/\/localhost[:\/])[^\s"'<>]+$/.test(u||'');
+  if(CFG.checkout&&!safe(CFG.checkout))CFG.checkout='';if(CFG.portal&&!safe(CFG.portal))CFG.portal='';if(CFG.api&&!safe(CFG.api))CFG.api='';
+  if(CFG.checkout){$('buy').href=CFG.checkout;$('buy').hidden=false;$('buyNote').hidden=false}
+  if(CFG.portal){$('portal').href=CFG.portal;$('portal').hidden=false}
+  if(CFG.contact){$('contact').href=(/^https?:/.test(CFG.contact)?'':'mailto:')+CFG.contact;$('contact').hidden=false}}
+async function call(path,body){if(!CFG.api)throw {reason:'not_ready'};
+  let r;try{const ac=new AbortController();const t=setTimeout(()=>ac.abort(),20000);
+    r=await fetch(CFG.api.replace(/\/+$/,'')+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ac.signal});clearTimeout(t)}
+  catch(e){throw {reason:'offline'}}
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok&&!j.reason)j.reason='server_error';return j}
+function openApp(html,s,j){
+  try{sessionStorage.setItem('pro_key',s.key);sessionStorage.setItem('pro_iid',s.iid||'');sessionStorage.setItem('pro_api',CFG.api||'');sessionStorage.setItem('pro_portal',CFG.portal||'');sessionStorage.setItem('pro_name',s.name||'')}catch(e){}
+  document.open();document.write(html);document.close()}
+function keep(s,html){s.ok=Date.now();LSs('pro_saved',JSON.stringify(s));LSs('pro_html',html)}
+function wipe(){LSr('pro_saved');LSr('pro_html');try{['pro_key','pro_iid','pro_api','pro_portal','pro_name'].forEach(k=>sessionStorage.removeItem(k))}catch(e){}}
+(async()=>{
+  await loadCfg();
+  const note=LSg('pro_msg');if(note){LSr('pro_msg');msg(MSG[note]||MSG.invalid,note==='logout'?'ok':'bad')}
+  let s=null;try{s=JSON.parse(LSg('pro_saved')||'null')}catch(e){}
+  if(!s||!s.key)return;
+  $('k').value=s.key;msg('⏳ בודק את הסיריאל…');
+  try{
+    const j=await call('/app',{key:s.key,iid:s.iid,dev:devName()});
+    if(!j.ok){if(SOFT.includes(j.reason))throw {reason:j.reason};wipe();msg(MSG[j.reason]||MSG.invalid,'bad');return}
+    keep(s,j.html);openApp(j.html,s,j);
+  }catch(e){
+    const r=e&&e.reason;const cached=LSg('pro_html');
+    if(SOFT.includes(r)&&cached&&Date.now()-(s.ok||0)<GRACE){openApp(cached,s);return}
+    msg(MSG[r]||MSG.server_error,'bad')}
+})();
+$('f').addEventListener('submit',async ev=>{ev.preventDefault();
+  const key=$('k').value.trim().toUpperCase().startsWith('G-')?$('k').value.trim().toUpperCase():$('k').value.trim();
+  if(!key){msg('הדבק את הסיריאל מהמייל.','bad');$('k').focus();return}
+  if(!/^[A-Za-z0-9-]{8,80}$/.test(key)){msg(MSG.bad_key,'bad');$('k').focus();return}
+  const btn=$('go');btn.disabled=true;msg('⏳ מאמת את הסיריאל…');
+  let old=null;try{old=JSON.parse(LSg('pro_saved')||'null')}catch(e){}
+  try{const j=await call('/unlock',{key,iid:old&&old.key===key?old.iid:'',dev:devName()});
+    if(!j.ok)throw {reason:j.reason||'invalid'};
+    const s={key,iid:j.iid||'',name:j.name||''};keep(s,j.html);msg('✅ נכנס…','ok');openApp(j.html,s,j)}
+  catch(e){msg(MSG[e&&e.reason]||MSG.server_error,'bad');btn.disabled=false;$('k').focus()}});
+})();
+</script>
+</body>
+</html>
