@@ -15,12 +15,13 @@
 //   LS_PRODUCT_ID   plain, optional: only accept keys of this product
 //   ALLOWED_ORIGIN  plain, optional: default https://tomeramr.github.io
 //   APP_URL         plain, optional: default https://tomeramr.github.io/candles/pro/app.bin
+//   LS_WEBHOOK_SECRET secret: the signing secret of the Lemon Squeezy webhook (payments ledger)
 
 const LS = 'https://api.lemonsqueezy.com';
 const REVALIDATE_MS = 60 * 60 * 1000;   // light check (ping): ask Lemon Squeezy at most once an hour
 const APP_CHECK_MS = 10 * 60 * 1000;    // opening the app: re-check if the last check is older than 10 min
 const ONLINE_MS = 5 * 60 * 1000;
-const LIMITS = { unlock: 8, app: 12, ping: 30, release: 10, admin: 60 }; // requests per minute per IP
+const LIMITS = { unlock: 8, app: 12, ping: 30, release: 10, admin: 90, hit: 20, err: 20, lswebhook: 120 }; // requests per minute per IP
 let APP_CACHE = {}; // per language: {at, html}
 
 export default {
@@ -46,10 +47,20 @@ export default {
       if (req.method === 'POST' && path === '/app') return json(await app(env, await body(req)));
       if (req.method === 'POST' && path === '/ping') return json(await ping(env, await body(req)));
       if (req.method === 'POST' && path === '/release') return json(await release(env, await body(req)));
+      if (req.method === 'POST' && path === '/hit') return json(await hit(env, await req.json().catch(() => ({})), req));
+      if (req.method === 'POST' && path === '/err') return json(await errLog(env, await req.json().catch(() => ({}))));
+      if (req.method === 'POST' && path === '/lswebhook') return json(await lsWebhook(env, req));
       if (path.startsWith('/admin/')) {
         if (!(await isAdmin(req, env))) return json({ ok: false, reason: 'unauthorized' }, 401);
         if (req.method === 'GET' && path === '/admin/stats') return json(await stats(env));
         if (req.method === 'POST' && path === '/admin/guest') return json(await guestCreate(env, await req.json().catch(() => ({}))));
+        const q = new URL(req.url).searchParams;
+        if (req.method === 'GET' && path === '/admin/overview') return json(await overview(env, q));
+        if (req.method === 'GET' && path === '/admin/errors') return json(await errList(env, q));
+        if (req.method === 'POST' && path === '/admin/errors/clear') return json(await errClear(env));
+        if (req.method === 'GET' && path === '/admin/payments') return json(await payList(env, q, false));
+        if (req.method === 'GET' && path === '/admin/payments/all') return json(await payList(env, q, true));
+        if (req.method === 'POST' && path === '/admin/sync') return json(await lsSync(env));
         if (req.method === 'POST' && path === '/admin/guest/revoke') return json(await guestRevoke(env, await req.json().catch(() => ({}))));
       }
       return json({ ok: false, reason: 'not_found' }, 404);
@@ -370,5 +381,180 @@ async function stats(env) {
     subs_available: !!subs,
     users: rows, guests: g,
     recent: evs.slice(0, 60).map(e => ({ t: e.t, tail: e.tail, who: e.email, ev: e.ev, detail: e.detail })),
+  };
+}
+
+// ---------- usage: who opens the app, who installed it, who is online ----------
+const ONLINE_HIT_MS = 150 * 1000;  // the app sends a heartbeat every minute while it is open
+const KINDS = ['site', 'share', 'admin', 'pro', 'guest'];
+const clean = (v, n) => String(v == null ? '' : v).replace(/[<>\u0000-\u001f]/g, '').slice(0, n);
+function ilDay(t) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date(t)); }
+function ilOff(t) { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(t)).map(x => [x.type, x.value])); return Date.UTC(+p.year, p.month - 1, +p.day, +p.hour, +p.minute) - Math.floor(t / 60000) * 60000; }
+function ilStart(day) { const g = Date.parse(day + 'T00:00:00Z'); return g - ilOff(g); }
+async function hit(env, b, req) {
+  const did = clean(b.did, 40);
+  if (!/^[A-Za-z0-9-]{12,40}$/.test(did)) return { ok: false, reason: 'bad_request' };
+  const kind = KINDS.includes(b.kind) ? b.kind : 'site';
+  const now = Date.now(), inst = b.installed ? 1 : 0;
+  const prev = await env.DB.prepare('SELECT installed FROM clients WHERE did=?1').bind(did).first();
+  await env.DB.prepare(
+    `INSERT INTO clients (did, kind, who, ver, dev, first_seen, last_seen, installed, installed_at, hits, country) VALUES (?1,?2,?3,?4,?5,?6,?6,?7,CASE WHEN ?7=1 THEN ?6 END,1,?8)
+     ON CONFLICT(did) DO UPDATE SET kind=?2, who=CASE WHEN ?3<>'' THEN ?3 ELSE who END, ver=?4, dev=?5, last_seen=?6,
+       installed=MAX(installed, ?7), installed_at=COALESCE(installed_at, CASE WHEN ?7=1 THEN ?6 END), hits=hits+1, country=?8`
+  ).bind(did, kind, clean(b.who, 60), clean(b.ver, 16), clean(b.dev, 40), now, inst, clean(req.headers.get('CF-IPCountry'), 4)).run();
+  await env.DB.prepare('INSERT OR IGNORE INTO daily (day, did, kind) VALUES (?1,?2,?3)').bind(ilDay(now), did, kind).run();
+  if (inst && !(prev && prev.installed)) await env.DB.prepare('INSERT INTO usage_log (t, did, kind, ev) VALUES (?1,?2,?3,?4)').bind(now, did, kind, 'installed').run();
+  if (!prev) await env.DB.prepare('INSERT INTO usage_log (t, did, kind, ev) VALUES (?1,?2,?3,?4)').bind(now, did, kind, 'first_open').run();
+  return { ok: true };
+}
+
+// ---------- error log: every JavaScript error in the app, grouped by message ----------
+async function errLog(env, b) {
+  const did = clean(b.did, 40), msg = clean(b.msg, 300);
+  if (!msg || !/^[A-Za-z0-9-]{12,40}$/.test(did)) return { ok: false, reason: 'bad_request' };
+  const now = Date.now(), day = ilDay(now);
+  const src = clean(b.src, 160), line = Math.max(0, Math.floor(+b.line || 0));
+  const sig = (await sha(msg + '|' + src.replace(/\?.*$/, '') + '|' + line + '|' + clean(b.ver, 16))).slice(0, 24);
+  const mine = await env.DB.prepare('SELECT COUNT(*) AS n FROM errors WHERE day=?1 AND last_did=?2').bind(day, did).first();
+  if (mine && mine.n > 40) return { ok: true, capped: true };
+  await env.DB.prepare(
+    `INSERT INTO errors (sig, day, first_t, last_t, n, devices, msg, src, line, ver, kind, page, dev, stack, last_did) VALUES (?1,?2,?3,?3,1,1,?4,?5,?6,?7,?8,?9,?10,?11,?12)
+     ON CONFLICT(sig, day) DO UPDATE SET last_t=?3, n=n+1, devices=devices+CASE WHEN last_did<>?12 THEN 1 ELSE 0 END, page=?9, dev=?10, last_did=?12`
+  ).bind(sig, day, now, msg, src, line, clean(b.ver, 16), KINDS.includes(b.kind) ? b.kind : 'site', clean(b.page, 40), clean(b.dev, 40), clean(b.stack, 600), did).run();
+  if (Math.random() < 0.01) await env.DB.prepare('DELETE FROM errors WHERE last_t < ?1').bind(now - 60 * 864e5).run();
+  return { ok: true };
+}
+async function errList(env, q) {
+  const days = Math.min(60, Math.max(1, +q.get('days') || 7));
+  const rows = (await env.DB.prepare('SELECT sig, day, first_t, last_t, n, devices, msg, src, line, ver, kind, page, dev, stack FROM errors WHERE last_t >= ?1 ORDER BY last_t DESC LIMIT 300')
+    .bind(Date.now() - days * 864e5).all()).results || [];
+  return { ok: true, days, rows };
+}
+async function errClear(env) { await env.DB.prepare('DELETE FROM errors').run(); return { ok: true }; }
+
+// ---------- payments (Lemon Squeezy webhook + one-time sync) ----------
+function hex(buf) { return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+async function lsWebhook(env, req) {
+  if (!env.LS_WEBHOOK_SECRET) return { ok: false, reason: 'not_configured' };
+  const raw = await req.text();
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.LS_WEBHOOK_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const want = hex(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(raw)));
+  const got = String(req.headers.get('X-Signature') || '').toLowerCase();
+  let diff = want.length ^ got.length;
+  for (let i = 0; i < want.length; i++) diff |= want.charCodeAt(i) ^ (got.charCodeAt(i) || 0);
+  if (diff) throw { reason: 'bad_signature', status: 401 };
+  let j; try { j = JSON.parse(raw); } catch (e) { throw { reason: 'bad_request', status: 400 }; }
+  const ev = j.meta && j.meta.event_name, d = j.data || {};
+  if (d.type === 'subscriptions') await saveSub(env, d);
+  else if (d.type === 'subscription-invoices') await saveInvoice(env, d);
+  else if (d.type === 'orders' && /refund/.test(ev || '')) await env.DB.prepare("UPDATE payments SET status='refunded' WHERE order_id=?1").bind(String(d.id)).run();
+  await env.DB.prepare('INSERT INTO usage_log (t, did, kind, ev) VALUES (?1,?2,?3,?4)').bind(Date.now(), String(d.id || ''), 'ls', clean(ev, 40)).run();
+  return { ok: true };
+}
+const ts = v => (v ? Date.parse(v) || null : null);
+async function saveSub(env, d) {
+  const a = d.attributes || {};
+  if (env.LS_STORE_ID && String(a.store_id) !== String(env.LS_STORE_ID)) return;
+  if (env.LS_PRODUCT_ID && String(a.product_id) !== String(env.LS_PRODUCT_ID)) return;
+  await env.DB.prepare(
+    `INSERT INTO subs (id, email, name, plan, status, created, renews_at, ends_at, trial_ends_at, test, order_id) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)
+     ON CONFLICT(id) DO UPDATE SET email=?2, name=?3, plan=?4, status=?5, renews_at=?7, ends_at=?8, trial_ends_at=?9, test=?10`
+  ).bind(String(d.id), clean(a.user_email, 120), clean(a.user_name, 120), clean(a.variant_name || a.product_name, 80), clean(a.status, 20),
+    ts(a.created_at) || Date.now(), ts(a.renews_at), ts(a.ends_at), ts(a.trial_ends_at), a.test_mode ? 1 : 0, String(a.order_id || '')).run();
+}
+async function saveInvoice(env, d) {
+  const a = d.attributes || {};
+  if (env.LS_STORE_ID && String(a.store_id) !== String(env.LS_STORE_ID)) return;
+  const sub = await env.DB.prepare('SELECT plan, order_id FROM subs WHERE id=?1').bind(String(a.subscription_id || '')).first();
+  const st = a.refunded ? 'refunded' : clean(a.status, 20);
+  await env.DB.prepare(
+    `INSERT INTO payments (id, t, sub_id, order_id, customer, email, plan, reason, amount, refunded_amount, currency, status, test, ref) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)
+     ON CONFLICT(id) DO UPDATE SET status=?12, refunded_amount=?10, customer=?5, email=?6, plan=CASE WHEN ?7<>'' THEN ?7 ELSE plan END`
+  ).bind('inv_' + d.id, ts(a.created_at) || Date.now(), String(a.subscription_id || ''), sub ? sub.order_id : '',
+    clean(a.user_name, 120), clean(a.user_email, 120), sub ? sub.plan : '', clean(a.billing_reason, 20),
+    Math.round(+a.total || 0), Math.round(+a.refunded_amount || 0), clean(a.currency || 'ILS', 3).toUpperCase(), st, a.test_mode ? 1 : 0,
+    clean((a.urls && a.urls.invoice_url) ? ('#' + d.id) : d.id, 40)).run();
+}
+async function lsGetAll(env, path) {
+  const out = [];
+  let url = `${LS}/v1/${path}?filter[store_id]=${encodeURIComponent(env.LS_STORE_ID)}&page[size]=100`;
+  for (let i = 0; i < 50 && url; i++) {
+    const r = await fetch(url, { headers: { Accept: 'application/vnd.api+json', Authorization: `Bearer ${env.LS_API_KEY}` } });
+    if (!r.ok) throw { reason: 'ls_unavailable', status: 503 };
+    const j = await r.json();
+    out.push(...(j.data || []));
+    url = j.links && j.links.next ? j.links.next : null;
+  }
+  return out;
+}
+async function lsSync(env) {
+  if (!env.LS_API_KEY || !env.LS_STORE_ID) return { ok: false, reason: 'no_api_key' };
+  const subs = await lsGetAll(env, 'subscriptions');
+  for (const d of subs) await saveSub(env, d);
+  const inv = await lsGetAll(env, 'subscription-invoices');
+  for (const d of inv) await saveInvoice(env, d);
+  return { ok: true, subs: subs.length, invoices: inv.length };
+}
+function payWhere(q) {
+  const w = [], v = [];
+  const test = q.get('test') || 'live';
+  if (test === 'live') w.push('test=0'); else if (test === 'test') w.push('test=1');
+  const st = q.get('status') || '';
+  if (st === 'paid') w.push("status='paid'"); else if (st === 'refunded') w.push("status IN ('refunded','partial_refund')"); else if (st === 'other') w.push("status NOT IN ('paid','refunded','partial_refund')");
+  const m = /^\d{4}-\d{2}$/.test(q.get('month') || '') ? q.get('month') : '';
+  if (m) { const [y, mo] = m.split('-').map(Number); v.push(ilStart(m + '-01'), ilStart(new Date(Date.UTC(y, mo, 1)).toISOString().slice(0, 10))); w.push(`t >= ?${v.length - 1} AND t < ?${v.length}`); }
+  const s = String(q.get('q') || '').trim().slice(0, 60);
+  if (s) { v.push('%' + s.replace(/[%_]/g, '') + '%'); w.push(`(customer LIKE ?${v.length} OR email LIKE ?${v.length} OR plan LIKE ?${v.length} OR ref LIKE ?${v.length})`); }
+  return { sql: w.length ? ' WHERE ' + w.join(' AND ') : '', v };
+}
+const SORTS = { t_desc: 't DESC', t_asc: 't ASC', amount_desc: 'amount DESC', amount_asc: 'amount ASC', name: 'customer COLLATE NOCASE ASC' };
+async function payList(env, q, all) {
+  const { sql, v } = payWhere(q);
+  const order = SORTS[q.get('sort')] || 't DESC';
+  const size = all ? 5000 : Math.min(200, Math.max(10, +q.get('size') || 50));
+  const page = all ? 1 : Math.max(1, Math.floor(+q.get('page') || 1));
+  const cols = 'id, t, customer, email, plan, reason, amount, refunded_amount, currency, status, test, ref';
+  const rows = (await env.DB.prepare(`SELECT ${cols} FROM payments${sql} ORDER BY ${order} LIMIT ${size} OFFSET ${(page - 1) * size}`).bind(...v).all()).results || [];
+  const tot = (await env.DB.prepare(`SELECT currency, COUNT(*) AS n, SUM(CASE WHEN status IN ('paid','partial_refund') THEN amount - refunded_amount ELSE 0 END) AS net, SUM(refunded_amount) AS refunded, COUNT(DISTINCT LOWER(email)) AS customers FROM payments${sql} GROUP BY currency`).bind(...v).all()).results || [];
+  const count = tot.reduce((s, x) => s + x.n, 0);
+  return { ok: true, page, size, count, pages: Math.max(1, Math.ceil(count / size)), totals: tot, rows };
+}
+
+// ---------- overview: the numbers at the top of the admin dashboard ----------
+async function overview(env, q) {
+  const now = Date.now(), days = Math.min(90, Math.max(7, +q.get('days') || 30)), T = q.get('test') === '1' ? 1 : 0;
+  const today = ilDay(now), from = ilDay(now - (days - 1) * 864e5);
+  const one = async (sql, ...v) => ((await env.DB.prepare(sql).bind(...v).first()) || {});
+  const on = (await env.DB.prepare('SELECT kind, COUNT(*) AS n FROM clients WHERE last_seen >= ?1 GROUP BY kind').bind(now - ONLINE_HIT_MS).all()).results || [];
+  const onlineList = (await env.DB.prepare('SELECT kind, who, dev, ver, installed, last_seen, country FROM clients WHERE last_seen >= ?1 ORDER BY last_seen DESC LIMIT 100').bind(now - ONLINE_HIT_MS).all()).results || [];
+  const all = await one('SELECT COUNT(*) AS users, SUM(installed) AS installs FROM clients');
+  const todayN = await one('SELECT COUNT(*) AS n FROM daily WHERE day=?1', today);
+  const week = await one('SELECT COUNT(DISTINCT did) AS n FROM daily WHERE day >= ?1', ilDay(now - 6 * 864e5));
+  const newToday = await one('SELECT COUNT(*) AS n FROM clients WHERE first_seen >= ?1', ilStart(today));
+  const byKind = (await env.DB.prepare('SELECT kind, COUNT(*) AS n, SUM(installed) AS inst FROM clients GROUP BY kind').all()).results || [];
+  const chartA = (await env.DB.prepare('SELECT day, COUNT(*) AS n FROM daily WHERE day >= ?1 GROUP BY day').bind(from).all()).results || [];
+  const chartN = (await env.DB.prepare('SELECT first_seen, installed_at FROM clients WHERE first_seen >= ?1 OR installed_at >= ?1').bind(now - days * 864e5).all()).results || [];
+  const chartP = (await env.DB.prepare("SELECT t, amount - refunded_amount AS net FROM payments WHERE test=?2 AND status IN ('paid','partial_refund') AND t >= ?1").bind(now - days * 864e5, T).all()).results || [];
+  const series = {};
+  for (let i = days - 1; i >= 0; i--) series[ilDay(now - i * 864e5)] = { active: 0, new: 0, installs: 0, revenue: 0 };
+  for (const r of chartA) if (series[r.day]) series[r.day].active = r.n;
+  for (const r of chartN) { const a = series[ilDay(r.first_seen)]; if (a && r.first_seen >= now - days * 864e5) a.new++; if (r.installed_at) { const b = series[ilDay(r.installed_at)]; if (b) b.installs++; } }
+  for (const r of chartP) { const a = series[ilDay(r.t)]; if (a) a.revenue += r.net || 0; }
+  const subs = (await env.DB.prepare('SELECT status, plan, test FROM subs').all()).results || [];
+  const live = subs.filter(s => (s.test ? 1 : 0) === T), test = subs.filter(s => s.test);
+  const cnt = (L, st) => L.filter(s => st.includes(s.status)).length;
+  const monthStart = ilStart(today.slice(0, 8) + '01'), yearStart = ilStart(today.slice(0, 5) + '01-01');
+  const rev = async (from, t) => (await env.DB.prepare(`SELECT currency, SUM(amount - refunded_amount) AS net, COUNT(*) AS n FROM payments WHERE test=?2 AND status IN ('paid','partial_refund') AND t >= ?1 GROUP BY currency`).bind(from, t).all()).results || [];
+  const errs = await one('SELECT COUNT(*) AS groups, SUM(n) AS n FROM errors WHERE last_t >= ?1', now - 864e5);
+  return {
+    ok: true, at: now, days,
+    online: on.reduce((s, x) => s + x.n, 0), onlineByKind: on, onlineList,
+    users: all.users || 0, installs: all.installs || 0, today: todayN.n || 0, week: week.n || 0, newToday: newToday.n || 0, byKind,
+    series: Object.entries(series).map(([day, x]) => ({ day, ...x })),
+    trial: cnt(live, ['on_trial']), paying: cnt(live, ['active', 'past_due']), cancelled: cnt(live, ['cancelled', 'expired', 'unpaid', 'paused']), signups: live.length,
+    testSubs: test.length,
+    test: T, revMonth: await rev(monthStart, T), revYear: await rev(yearStart, T), revAll: await rev(0, T), revTest: await rev(0, 1),
+    webhook: !!env.LS_WEBHOOK_SECRET, api: !!env.LS_API_KEY,
+    errors24: errs.n || 0, errorGroups24: errs.groups || 0,
   };
 }

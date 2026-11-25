@@ -82,3 +82,17 @@ GATE_PW=<סיסמת המנהל> python3 tools/build_pro.py
 ## מה נשמר בשרת
 
 לכל סיריאל: hash של הסיריאל (לא הסיריאל עצמו), 4 התווים האחרונים, שם ומייל מ-Lemon Squeezy, מצב, מועד הסיום ויומן אירועים. לכל מכשיר: שם המכשיר, גרסת האפליקציה ומועד הכניסה האחרונה. לקודי אורח: hash של הקוד, שם החבר ותאריך התפוגה.
+
+## 5. גרסה 2.7: משתמשים, התקנות, יומן תקלות ולוח תשלומים
+
+**פעם אחת ב-Cloudflare:**
+1. D1 → `candles-pro` → **Console**: מדביקים את התוכן של `schema-v2.7.sql` ולוחצים Execute (בטוח להריץ שוב).
+2. Worker `candles-pro` → **Edit code**: מחליפים בתוכן החדש של `worker.js` → **Deploy**.
+
+**פעם אחת ב-Lemon Squeezy (לוח התשלומים):**
+1. Settings → **Webhooks** → ➕. URL: `https://candles-pro.tomeramr7.workers.dev/lswebhook`.
+2. Signing secret: קוד אקראי ארוך (לפחות 20 תווים). מסמנים את האירועים: `subscription_created`, `subscription_updated`, `subscription_cancelled`, `subscription_expired`, `subscription_payment_success`, `subscription_payment_refunded`, `order_refunded`.
+3. ב-Cloudflare → Worker → Settings → Variables and Secrets → **Add** → Secret בשם `LS_WEBHOOK_SECRET` עם אותו קוד.
+4. בלוח התשלומים באתר: "🔗 חיבור ל-Lemon Squeezy" → "♻️ משיכת כל התשלומים" כדי להביא גם תשלומים מלפני החיבור.
+
+**מה נשמר:** לכל מכשיר מזהה אקראי (לא שם ולא IP), סוג המשתמש, גרסה, סוג מכשיר, מדינה (מ-Cloudflare), מתי נכנס ואם התקין. לתקלות: ההודעה, הקובץ והשורה, המסך והגרסה. לתשלומים: מה ש-Lemon Squeezy שולח (שם, מייל, תוכנית, סכום, מצב). תקלות ישנות מ-60 יום נמחקות לבד.
