@@ -35,8 +35,18 @@ button:disabled{opacity:.6}
     <div class="row"><input type="checkbox" id="rem" checked> <label for="rem" style="margin:0">זכור אותי במכשיר הזה</label></div>
     <button id="go" type="submit">כניסה</button>
   </form>
-  <div id="msg"></div>
+  <div id="msg" role="status" aria-live="polite"></div>
+  <p id="probP" hidden style="margin:14px 0 0;text-align:center;font-size:15px"><a href="#" id="prob" style="color:var(--accent);font-weight:700">🆘 נתקלת בבעיה? לחץ כאן</a></p>
 </div>
+<script>
+(function(){var TO='';
+  fetch('pro/config.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():{}}).then(function(c){var v=c&&c.contact;if(v&&!/^https?:/.test(v)&&/^[^\s@<>"']+@[^\s@<>"']+$/.test(v)){TO=v;document.getElementById('probP').hidden=false}}).catch(function(){});
+  document.getElementById('prob').addEventListener('click',function(e){e.preventDefault();if(!TO)return;
+    var u=navigator.userAgent,dev=(/Android/i.test(u)?'Android':/iPhone|iPad/i.test(u)?'iPhone':/Mac/i.test(u)?'Mac':/Windows/i.test(u)?'Windows':'מכשיר')+' · '+(/Edg\//.test(u)?'Edge':/SamsungBrowser/.test(u)?'Samsung':/Chrome\//.test(u)?'Chrome':/Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'דפדפן');
+    var body='שלום, נתקלתי בבעיה בכניסה.\n\nשם משתמש: '+(document.getElementById('u').value||'')+'\nמה קרה: \n\n---\nההודעה על המסך: '+(document.getElementById('msg').textContent||'—')+'\nמכשיר: '+dev+'\nזמן: '+new Date().toLocaleString('he-IL');
+    location.href='mailto:'+TO+'?subject='+encodeURIComponent('קורא נרות – בעיה בכניסה')+'&body='+encodeURIComponent(body)});
+})();
+</script>
 <script id="gd" type="application/json">__GATE_DATA__</script>
 <script>
 (function(){

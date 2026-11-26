@@ -34,6 +34,19 @@ a{color:var(--accent)}
 .links{margin-top:16px;font-size:.9rem;display:flex;flex-wrap:wrap;gap:6px 14px}
 .disc{margin:12px 0 0;font-size:.8rem;color:var(--muted)}
 .feat{margin:0 0 14px;padding-inline-start:18px;font-size:.95rem}
+[hidden]{display:none!important}
+button.trial{width:100%;margin:0;border:0;cursor:pointer}
+.buyL{display:block;text-align:center;margin-top:10px;font-weight:700}
+#tf,#tDone{margin-top:6px;border:1px solid var(--line);border-radius:14px;padding:14px}
+#tf h2,#tDone h2{margin:0 0 4px;font-size:1.15rem}
+#tf input:not([type=checkbox]){font-family:inherit}
+.hint{margin:4px 0 0;font-size:.82rem;color:var(--muted)}
+.chk{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:.9rem;margin-top:12px}
+.chk input{width:22px;height:22px;margin:2px 0 0;flex:0 0 auto}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.codeBox{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.15rem;font-weight:700;text-align:center;padding:12px;border-radius:12px;background:var(--bg);border:1px dashed var(--line);margin:10px 0;word-break:break-all;user-select:all}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.row2 button{margin-top:0}
+.prob{margin:10px 0 0;text-align:center;font-size:.95rem}.prob a{font-weight:700}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -47,14 +60,37 @@ a{color:var(--accent)}
     <li data-t="f2">המלצה טכנית: לונג או שורט, עם בדיקת דיוק לאחור</li>
     <li data-t="f3">מכ"ם שווקים, התראות ושקלול אופציות</li>
   </ul>
-  <a class="trial" id="buy" href="#" target="_blank" rel="noopener" hidden data-t="buy">🎁 התחל 5 ימי ניסיון חינם</a>
-  <p class="help" id="buyNote" hidden data-t="buyNote" data-h="1">אחרי ההרשמה יגיע אליך במייל <b>סיריאל</b> (מפתח רישיון). מדביקים אותו כאן:</p>
+  <button type="button" class="trial" id="trialBtn" aria-controls="tf" aria-expanded="false" data-t="trialBtn">🎁 התחל 5 ימי ניסיון חינם · בלי כרטיס אשראי</button>
+  <form id="tf" hidden novalidate aria-labelledby="tfT">
+    <h2 id="tfT" data-t="tfT">🎁 הרשמה ל-5 ימי ניסיון</h2>
+    <p class="hint" data-t="tfSub">בלי כרטיס אשראי. בסוף ההרשמה תקבל קוד כניסה אישי.</p>
+    <label for="tName" data-t="tName">שם מלא</label>
+    <input id="tName" type="text" autocomplete="name" maxlength="40" required>
+    <label for="tUser" data-t="tUser">שם משתמש</label>
+    <input id="tUser" type="text" dir="ltr" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="24" aria-describedby="tUserH" required>
+    <p class="hint" id="tUserH" data-t="tUserH">3 עד 24 תווים: אותיות, ספרות, נקודה, מקף או קו תחתון. אם תיתקל בבעיה, זה השם שתמסור לנו.</p>
+    <label for="tMail" data-t="tMail">מייל</label>
+    <input id="tMail" type="email" dir="ltr" autocomplete="email" maxlength="120" required>
+    <label class="chk" for="tOk"><input type="checkbox" id="tOk"><span data-t="tOk" data-h="1">קראתי ואני מסכים ל<a href="terms.html" target="_blank" rel="noopener">תקנון ולמדיניות הפרטיות</a>. השם, שם המשתמש והמייל נשמרים לצורך ניהול הניסיון ותמיכה.</span></label>
+    <div class="row2"><button type="submit" id="tGo" data-t="tGo">התחל את הניסיון</button><button type="button" class="ghost" id="tBack" data-t="tBack">ביטול</button></div>
+  </form>
+  <section id="tDone" hidden aria-labelledby="tdT">
+    <h2 id="tdT" data-t="tdT">✅ הניסיון שלך התחיל</h2>
+    <p class="hint" id="tdSub"></p>
+    <div class="codeBox" id="tCode" dir="ltr"></div>
+    <p class="hint" data-t="tdKeep">שמור את הקוד הזה. הוא נשמר גם במכשיר הזה, אבל במכשיר אחר תצטרך להקליד אותו.</p>
+    <div class="row2"><button type="button" class="ghost" id="tCopy" data-t="tCopy">📋 העתק את הקוד</button><button type="button" class="ghost" id="tMailMe" data-t="tMailMe">📧 שלח לי במייל</button></div>
+    <button type="button" id="tEnter" data-t="tEnter">כניסה לאפליקציה</button>
+  </section>
+  <a class="buyL" id="buy" href="#" target="_blank" rel="noopener" hidden data-t="buy">💳 רכישת מנוי</a>
+  <p class="help" id="buyNote" hidden data-t="buyNote" data-h="1">אחרי הרכישה יגיע אליך במייל <b>סיריאל</b> (מפתח רישיון). מדביקים אותו כאן:</p>
   <form id="f" autocomplete="off" novalidate>
-    <label for="k" data-t="lbl">סיריאל (מפתח רישיון) או קוד אורח</label>
+    <label for="k" data-t="lbl">סיריאל (מפתח רישיון), קוד ניסיון או קוד אורח</label>
     <input id="k" name="license" type="text" dir="ltr" inputmode="text" autocapitalize="none" spellcheck="false" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" aria-describedby="msg" required>
     <button id="go" type="submit" data-t="go">כניסה</button>
   </form>
   <div id="msg" role="status" aria-live="polite"></div>
+  <p class="prob" id="probP" hidden><a href="#" id="prob" data-t="prob">🆘 נתקלת בבעיה? לחץ כאן</a></p>
   <nav class="links" aria-label="קישורים">
     <a href="terms.html" data-t="terms">תקנון ותנאי שימוש</a>
     <a href="accessibility.html" data-t="a11y">הצהרת נגישות</a>
@@ -73,7 +109,11 @@ const msg=(t,c)=>{const m=$('msg');m.textContent=t||'';m.className=c||''};
 const GRACE=72*3600e3; // offline: the last copy keeps working for 3 days since the last successful check
 let LANG='he';try{LANG=localStorage.getItem('cr_lang')==='en'?'en':'he'}catch(e){}
 const EN={sub:'Technical analysis for stocks · developed by Tomer Amran',f1:'Candle reading and trend: up or down',f2:'Technical recommendation: long or short, with a backtest of its accuracy',f3:'Market radar, alerts and options weighting',
-  buy:'🎁 Start a 5-day free trial',buyNote:'After you sign up you\u2019ll get a <b>serial</b> (license key) by email. Paste it here:',lbl:'Serial (license key) or guest code',go:'Sign in',
+  buy:'💳 Buy a subscription',buyNote:'After you buy you\u2019ll get a <b>serial</b> (license key) by email. Paste it here:',lbl:'Serial (license key), trial code or guest code',go:'Sign in',
+  trialBtn:'🎁 Start a 5-day free trial · no credit card',tfT:'🎁 Sign up for a 5-day trial',tfSub:'No credit card. At the end you get a personal sign-in code.',tName:'Full name',tUser:'Username',
+  tUserH:'3 to 24 characters: letters, digits, dot, hyphen or underscore. If you run into a problem, this is the name you give us.',tMail:'Email',
+  tOk:'I have read and agree to the <a href="terms.html" target="_blank" rel="noopener">terms and privacy policy (Hebrew)</a>. Your name, username and email are kept to manage the trial and for support.',
+  tGo:'Start the trial',tBack:'Cancel',tdT:'✅ Your trial has started',tdKeep:'Keep this code. It is also saved on this device, but on another device you will need to type it.',tCopy:'📋 Copy the code',tMailMe:'📧 Email it to me',tEnter:'Open the app',prob:'🆘 Having trouble? Click here',
   terms:'Terms of use (Hebrew)',a11y:'Accessibility statement (Hebrew)',portal:'Manage or cancel subscription',contact:'Contact',disc:'⚠️ The tool shows automated technical analysis for information only, and is not investment advice.'};
 const MSG_EN={
   invalid:'❌ Serial not found. Copy all of it from the email and try again.',
@@ -88,6 +128,10 @@ const MSG_EN={
   offline:'📶 No internet connection. A connection is needed to verify the serial.',
   not_ready:'🛠️ The system is still being set up. Try again soon.',
   logout:'👋 You signed out on this device.',
+  name_required:'Type your full name.',bad_user:'The username needs 3 to 24 characters: letters, digits, dot, hyphen or underscore.',bad_email:'The email address doesn\u2019t look right.',
+  consent:'To start the trial, tick the box that you agree to the terms.',email_used:'This email already had a trial. Forgot the code? Click "Having trouble?" and we will help.',
+  user_taken:'This username is taken. Choose another.',trial_limit:'Too many sign-ups from this network today. Try tomorrow, or click "Having trouble?".',
+  trial_closed:'Trial sign-up isn\u2019t open yet. Try again soon, or click "Having trouble?".',signing:'⏳ Creating your trial…',copied:'✅ Copied',until:'Valid until {d}.',
   empty:'Paste the serial from the email.',checking:'⏳ Checking the serial…',verifying:'⏳ Verifying the serial…',inn:'✅ Signing in…'};
 const MSG={
   invalid:'❌ הסיריאל לא נמצא. העתק אותו במלואו מהמייל ונסה שוב.',
@@ -102,6 +146,10 @@ const MSG={
   offline:'📶 אין חיבור לאינטרנט. צריך חיבור כדי לאמת את הסיריאל.',
   not_ready:'🛠️ המערכת עוד בהקמה. נסה שוב בקרוב.',
   logout:'👋 יצאת מהחשבון במכשיר הזה.',
+  name_required:'כתוב את השם המלא שלך.',bad_user:'שם המשתמש צריך 3 עד 24 תווים: אותיות, ספרות, נקודה, מקף או קו תחתון.',bad_email:'כתובת המייל לא נראית תקינה.',
+  consent:'כדי להתחיל, סמן שקראת ואתה מסכים לתקנון.',email_used:'למייל הזה כבר היה ניסיון. שכחת את הקוד? לחץ על "נתקלת בבעיה?" ונעזור לך.',
+  user_taken:'שם המשתמש הזה תפוס. בחר שם אחר.',trial_limit:'היום כבר נרשמו יותר מדי ניסיונות מהרשת הזו. נסה מחר, או לחץ על "נתקלת בבעיה?".',
+  trial_closed:'ההרשמה לניסיון עוד לא פתוחה. נסה שוב בקרוב, או לחץ על "נתקלת בבעיה?".',signing:'⏳ פותח לך ניסיון…',copied:'✅ הועתק',until:'בתוקף עד {d}.',
   empty:'הדבק את הסיריאל מהמייל.',checking:'⏳ בודק את הסיריאל…',verifying:'⏳ מאמת את הסיריאל…',inn:'✅ נכנס…'
 };
 if(LANG==='en'){Object.assign(MSG,MSG_EN);document.documentElement.lang='en';document.documentElement.dir='ltr';document.title='Candle Reader Pro – sign in';
@@ -115,7 +163,8 @@ let CFG=D.cfg||{};
 async function loadCfg(){try{const r=await fetch('config.json',{cache:'no-store'});if(r.ok)CFG={...CFG,...await r.json()}}catch(e){}
   const safe=u=>/^(https:\/\/|http:\/\/localhost[:\/])[^\s"'<>]+$/.test(u||'');
   if(CFG.checkout&&!safe(CFG.checkout))CFG.checkout='';if(CFG.portal&&!safe(CFG.portal))CFG.portal='';if(CFG.api&&!safe(CFG.api))CFG.api='';
-  if(CFG.checkout){$('buy').href=CFG.checkout;$('buy').hidden=false;$('buyNote').hidden=false}
+  if(CFG.checkout){$('buy').href=CFG.checkout;$('buy').hidden=false}
+  if(CFG.contact&&!/^https?:/.test(CFG.contact))$('probP').hidden=false;
   if(CFG.portal){$('portal').href=CFG.portal;$('portal').hidden=false}
   if(CFG.contact){$('contact').href=(/^https?:/.test(CFG.contact)?'':'mailto:')+CFG.contact;$('contact').hidden=false}}
 async function call(path,body){if(!CFG.api)throw {reason:'not_ready'};
@@ -144,6 +193,40 @@ function wipe(){LSr('pro_saved');['pro_html','pro_html_he','pro_html_en'].forEac
     if(SOFT.includes(r)&&cached&&Date.now()-(s.ok||0)<GRACE){openApp(cached,s);return}
     msg(MSG[r]||MSG.server_error,'bad')}
 })();
+// ---------- free trial ----------
+const tShow=on=>{$('tf').hidden=!on;$('trialBtn').hidden=on;$('trialBtn').setAttribute('aria-expanded',on?'true':'false');if(on)$('tName').focus();else $('trialBtn').focus()};
+$('trialBtn').addEventListener('click',()=>tShow(true));
+$('tBack').addEventListener('click',()=>{tShow(false);msg('')});
+let TRIAL=null;
+const fdate=t=>new Date(t).toLocaleDateString(LANG==='en'?'en-GB':'he-IL',{day:'numeric',month:'long',year:'numeric'});
+function trialDone(t){TRIAL=t;$('tf').hidden=true;$('trialBtn').hidden=true;$('tDone').hidden=false;$('tCode').textContent=t.code;$('tdSub').textContent=MSG.until.replace('{d}',fdate(t.until));$('k').value=t.code;$('tEnter').focus()}
+try{const t=JSON.parse(LSg('pro_trial')||'null');if(t&&t.code&&t.until>Date.now()&&!LSg('pro_saved'))$('k').value=t.code}catch(e){}
+$('tf').addEventListener('submit',async ev=>{ev.preventDefault();
+  const name=$('tName').value.trim(),user=$('tUser').value.trim(),email=$('tMail').value.trim(),fail=(r,el)=>{msg(MSG[r]||MSG.server_error,'bad');if(el)el.focus()};
+  if(name.length<2)return fail('name_required',$('tName'));
+  if(!/^[A-Za-z0-9_.\-\u0590-\u05FF]{3,24}$/.test(user))return fail('bad_user',$('tUser'));
+  if(!/^[^\s@<>"'`]+@[^\s@<>"'`]+\.[A-Za-z]{2,}$/.test(email))return fail('bad_email',$('tMail'));
+  if(!$('tOk').checked)return fail('consent',$('tOk'));
+  const b=$('tGo');b.disabled=true;msg(MSG.signing);
+  try{const j=await call('/trial',{name,user,email,consent:true,dev:devName(),lang:LANG});
+    if(!j.ok){const r=j.reason==='not_found'?'trial_closed':j.reason;fail(r,r==='user_taken'||r==='bad_user'?$('tUser'):r==='email_used'||r==='bad_email'?$('tMail'):null);b.disabled=false;return}
+    const t={code:j.code,until:j.until,email,user,name};LSs('pro_trial',JSON.stringify(t));msg('');trialDone(t)}
+  catch(e){fail(e&&e.reason);b.disabled=false}});
+$('tCopy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(TRIAL.code);msg(MSG.copied,'ok')}catch(e){const r=document.createRange();r.selectNodeContents($('tCode'));const s=getSelection();s.removeAllRanges();s.addRange(r)}});
+$('tMailMe').addEventListener('click',()=>{if(!TRIAL)return;const en=LANG==='en';
+  const sub=en?'Candle Reader Pro – my trial code':'קורא נרות פרו – קוד הניסיון שלי';
+  const body=(en?`Name: ${TRIAL.name}\nUsername: ${TRIAL.user}\nTrial code: ${TRIAL.code}\nValid until: ${fdate(TRIAL.until)}\n\nSign in: ${location.href.split('#')[0]}`
+    :`שם: ${TRIAL.name}\nשם משתמש: ${TRIAL.user}\nקוד ניסיון: ${TRIAL.code}\nבתוקף עד: ${fdate(TRIAL.until)}\n\nכניסה: ${location.href.split('#')[0]}`);
+  location.href='mailto:'+encodeURIComponent(TRIAL.email)+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body)});
+$('tEnter').addEventListener('click',()=>{$('f').requestSubmit?$('f').requestSubmit():$('go').click()});
+// ---------- "having trouble?" opens an email to the support address from config.json ----------
+$('prob').addEventListener('click',e=>{e.preventDefault();const en=LANG==='en';
+  const to=CFG.contact;if(!to||/^https?:/.test(to))return;
+  let t=null;try{t=JSON.parse(LSg('pro_trial')||'null')}catch(x){}
+  const k=($('k').value||'').trim(),user=($('tUser').value||'').trim()||(t&&t.user)||'';
+  const tech=[(en?'Message on screen: ':'ההודעה על המסך: ')+($('msg').textContent||'—'),(en?'Device: ':'מכשיר: ')+devName(),(en?'Code ends with: ':'הקוד מסתיים ב: ')+(k?'…'+k.slice(-4):'—'),(en?'Language: ':'שפה: ')+LANG,(en?'Time: ':'זמן: ')+new Date().toLocaleString(en?'en-GB':'he-IL')].join('\n');
+  const body=(en?`Hi, I ran into a problem signing in.\n\nUsername: ${user}\nWhat happened: \n\n---\n`:`שלום, נתקלתי בבעיה בכניסה.\n\nשם משתמש: ${user}\nמה קרה: \n\n---\n`)+tech;
+  location.href='mailto:'+to+'?subject='+encodeURIComponent(en?'Candle Reader Pro – sign-in problem':'קורא נרות פרו – בעיה בכניסה')+'&body='+encodeURIComponent(body)});
 $('f').addEventListener('submit',async ev=>{ev.preventDefault();
   const key=$('k').value.trim().toUpperCase().startsWith('G-')?$('k').value.trim().toUpperCase():$('k').value.trim();
   if(!key){msg(MSG.empty,'bad');$('k').focus();return}
