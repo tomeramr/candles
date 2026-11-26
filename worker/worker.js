@@ -62,6 +62,9 @@ export default {
         if (req.method === 'GET' && path === '/admin/payments/all') return json(await payList(env, q, true));
         if (req.method === 'POST' && path === '/admin/sync') return json(await lsSync(env));
         if (req.method === 'POST' && path === '/admin/guest/revoke') return json(await guestRevoke(env, await req.json().catch(() => ({}))));
+        if (req.method === 'POST' && path === '/admin/guest/delete') return json(await guestDelete(env, await req.json().catch(() => ({}))));
+        if (req.method === 'POST' && path === '/admin/guest/purge') return json(await guestPurge(env));
+        if (req.method === 'POST' && path === '/admin/events/clear') return json(await eventsClear(env));
       }
       return json({ ok: false, reason: 'not_found' }, 404);
     } catch (e) {
@@ -204,6 +207,29 @@ async function guestRevoke(env, b) {
   await env.DB.prepare('UPDATE guests SET revoked=1 WHERE h=?1').bind(g.h).run();
   await log(env, g.h, g.tail, g.name, 'guest_revoked', '');
   return { ok: true };
+}
+
+// delete one guest code for good (it stops working at once) and its log lines
+async function guestDelete(env, b) {
+  const tail = String(b.tail || '').slice(0, 8), created = +b.created || 0;
+  const g = await env.DB.prepare('SELECT h FROM guests WHERE tail=?1 AND created=?2').bind(tail, created).first();
+  if (!g) return { ok: false, reason: 'not_found' };
+  await env.DB.prepare('DELETE FROM guests WHERE h=?1').bind(g.h).run();
+  await env.DB.prepare('DELETE FROM events WHERE lic=?1').bind(g.h).run();
+  return { ok: true };
+}
+// delete every guest code that was revoked or has expired, with their log lines
+async function guestPurge(env) {
+  const now = Date.now();
+  const rows = (await env.DB.prepare('SELECT h FROM guests WHERE revoked=1 OR expires < ?1').bind(now).all()).results || [];
+  for (const r of rows) await env.DB.prepare('DELETE FROM events WHERE lic=?1').bind(r.h).run();
+  await env.DB.prepare('DELETE FROM guests WHERE revoked=1 OR expires < ?1').bind(now).run();
+  return { ok: true, deleted: rows.length };
+}
+// empty the serial log (codes and subscriptions are not touched)
+async function eventsClear(env) {
+  const r = await env.DB.prepare('DELETE FROM events').run();
+  return { ok: true, deleted: (r && r.meta && r.meta.changes) || 0 };
 }
 
 // ---------- the app itself ----------
