@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 source*.html
+.env
+.env.*
+!.env.example
+launch-report.md
