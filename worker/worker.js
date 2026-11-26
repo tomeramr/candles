@@ -21,7 +21,7 @@ const LS = 'https://api.lemonsqueezy.com';
 const REVALIDATE_MS = 60 * 60 * 1000;   // light check (ping): ask Lemon Squeezy at most once an hour
 const APP_CHECK_MS = 10 * 60 * 1000;    // opening the app: re-check if the last check is older than 10 min
 const ONLINE_MS = 5 * 60 * 1000;
-const LIMITS = { unlock: 8, app: 12, ping: 30, release: 10, admin: 90, hit: 20, err: 20, lswebhook: 120 }; // requests per minute per IP
+const LIMITS = { trial: 4, unlock: 8, app: 12, ping: 30, release: 10, admin: 90, hit: 20, err: 20, lswebhook: 120 }; // requests per minute per IP
 let APP_CACHE = {}; // per language: {at, html}
 
 export default {
@@ -43,6 +43,7 @@ export default {
       if (!(env.LS_STORE_ID && env.CONTENT_KEY && env.DB)) return json({ ok: false, reason: 'not_ready' }, 503);
       const route = path.startsWith('/admin') ? 'admin' : path.slice(1);
       if (LIMITS[route] && !(await allow(env, req, route))) return json({ ok: false, reason: 'rate' }, 429);
+      if (req.method === 'POST' && path === '/trial') return json(await trialStart(env, await req.json().catch(() => ({})), req));
       if (req.method === 'POST' && path === '/unlock') return json(await unlock(env, await body(req)));
       if (req.method === 'POST' && path === '/app') return json(await app(env, await body(req)));
       if (req.method === 'POST' && path === '/ping') return json(await ping(env, await body(req)));
@@ -52,6 +53,7 @@ export default {
       if (req.method === 'POST' && path === '/lswebhook') return json(await lsWebhook(env, req));
       if (path.startsWith('/admin/')) {
         if (!(await isAdmin(req, env))) return json({ ok: false, reason: 'unauthorized' }, 401);
+        await ensureCols(env);
         if (req.method === 'GET' && path === '/admin/stats') return json(await stats(env));
         if (req.method === 'POST' && path === '/admin/guest') return json(await guestCreate(env, await req.json().catch(() => ({}))));
         const q = new URL(req.url).searchParams;
@@ -65,6 +67,10 @@ export default {
         if (req.method === 'POST' && path === '/admin/guest/delete') return json(await guestDelete(env, await req.json().catch(() => ({}))));
         if (req.method === 'POST' && path === '/admin/guest/purge') return json(await guestPurge(env));
         if (req.method === 'POST' && path === '/admin/events/clear') return json(await eventsClear(env));
+        if (req.method === 'GET' && path === '/admin/customers') return json(await custList(env, q));
+        if (req.method === 'POST' && path === '/admin/customer/update') return json(await custUpdate(env, await req.json().catch(() => ({}))));
+        if (req.method === 'POST' && path === '/admin/customer/resetcode') return json(await custReset(env, await req.json().catch(() => ({}))));
+        if (req.method === 'GET' && path === '/admin/log') return json(await logAll(env, q));
       }
       return json({ ok: false, reason: 'not_found' }, 404);
     } catch (e) {
@@ -191,9 +197,7 @@ async function guestCreate(env, b) {
   const name = String(b.name || '').replace(/[<>]/g, '').trim().slice(0, 40);
   const days = Math.min(365, Math.max(1, Math.floor(+b.days || 7)));
   if (!name) return { ok: false, reason: 'name_required' };
-  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const rnd = crypto.getRandomValues(new Uint8Array(20));
-  const code = 'G-' + [...rnd].map(x => A[x % 32]).join('');
+  const code = genCode();
   const h = await sha(code), now = Date.now();
   await env.DB.prepare('INSERT INTO guests (h, tail, name, created, expires, revoked, last_seen, expired_logged) VALUES (?1,?2,?3,?4,?5,0,NULL,0)')
     .bind(h, code.slice(-4), name, now, now + days * 864e5).run();
@@ -207,6 +211,102 @@ async function guestRevoke(env, b) {
   await env.DB.prepare('UPDATE guests SET revoked=1 WHERE h=?1').bind(g.h).run();
   await log(env, g.h, g.tail, g.name, 'guest_revoked', '');
   return { ok: true };
+}
+
+
+// ---------- free trial (self sign-up, no credit card) and customer management ----------
+const TRIAL_DAYS = 5;
+const TRIAL_PER_IP_DAY = 3;
+function genCode() {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const rnd = crypto.getRandomValues(new Uint8Array(20));
+  return 'G-' + [...rnd].map(x => A[x % 32]).join('');
+}
+let COLS_OK = false;
+// adds the customer columns to the guests table the first time (safe to run again)
+async function ensureCols(env) {
+  if (COLS_OK) return;
+  for (const c of ['email TEXT', 'uname TEXT', 'note TEXT', 'kind TEXT', 'dev TEXT']) {
+    try { await env.DB.prepare(`ALTER TABLE guests ADD COLUMN ${c}`).run(); } catch (e) {}
+  }
+  COLS_OK = true;
+}
+const cleanTxt = (v, n) => String(v || '').replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, n);
+const okUser = u => /^[A-Za-z0-9_.\-֐-׿]{3,24}$/.test(u);
+const okEmail = e => e.length <= 120 && /^[^\s@<>"'`]+@[^\s@<>"'`]+\.[A-Za-z]{2,}$/.test(e);
+async function trialStart(env, b, req) {
+  await ensureCols(env);
+  const name = cleanTxt(b.name, 40), uname = String(b.user || '').trim(), email = String(b.email || '').trim().toLowerCase();
+  if (name.length < 2) return { ok: false, reason: 'name_required' };
+  if (!okUser(uname)) return { ok: false, reason: 'bad_user' };
+  if (!okEmail(email)) return { ok: false, reason: 'bad_email' };
+  if (b.consent !== true) return { ok: false, reason: 'consent' };
+  const ex = await env.DB.prepare('SELECT email, uname FROM guests WHERE email=?1 OR lower(uname)=lower(?2) LIMIT 1').bind(email, uname).first();
+  if (ex) return { ok: false, reason: ex.email === email ? 'email_used' : 'user_taken' };
+  // at most a few trials a day from the same network
+  const ip = req.headers.get('CF-Connecting-IP') || 'unknown', dayN = Math.floor(Date.now() / 864e5);
+  const row = await env.DB.prepare('INSERT INTO rl (k, n, t) VALUES (?1, 1, ?2) ON CONFLICT(k) DO UPDATE SET n = n + 1 RETURNING n').bind(`trialday:${ip}:${dayN}`, (dayN + 1) * 1440).first();
+  if (row && row.n > TRIAL_PER_IP_DAY) return { ok: false, reason: 'trial_limit' };
+  const code = genCode(), h = await sha(code), now = Date.now(), until = now + TRIAL_DAYS * 864e5;
+  const dev = cleanTxt(b.dev, 60);
+  await env.DB.prepare("INSERT INTO guests (h, tail, name, created, expires, revoked, last_seen, expired_logged, email, uname, note, kind, dev) VALUES (?1,?2,?3,?4,?5,0,NULL,0,?6,?7,'','trial',?8)")
+    .bind(h, code.slice(-4), name, now, until, email, uname, dev).run();
+  await log(env, h, code.slice(-4), name, 'trial_started', `${uname} · ${email}`);
+  return { ok: true, code, name, until };
+}
+function custRow(x, now) {
+  return { tail: x.tail, created: x.created, name: x.name, email: x.email || '', uname: x.uname || '', note: x.note || '', kind: x.kind || 'guest', dev: x.dev || '',
+    expires: x.expires, revoked: !!x.revoked, active: !x.revoked && now < x.expires, last_seen: x.last_seen, online: !!(x.last_seen && now - x.last_seen < ONLINE_MS) };
+}
+async function custList(env, q) {
+  const s = String(q.get('q') || '').trim().toLowerCase().slice(0, 60), now = Date.now();
+  const cols = 'tail, name, created, expires, revoked, last_seen, email, uname, note, kind, dev';
+  const rows = s
+    ? (await env.DB.prepare(`SELECT ${cols} FROM guests WHERE lower(name) LIKE ?1 OR lower(email) LIKE ?1 OR lower(uname) LIKE ?1 OR lower(tail) LIKE ?1 ORDER BY created DESC LIMIT 500`).bind(`%${s}%`).all()).results || []
+    : (await env.DB.prepare(`SELECT ${cols} FROM guests ORDER BY created DESC LIMIT 500`).all()).results || [];
+  return { ok: true, at: now, customers: rows.map(x => custRow(x, now)) };
+}
+async function custFind(env, b) {
+  const tail = String(b.tail || '').slice(0, 8), created = +b.created || 0;
+  return env.DB.prepare('SELECT * FROM guests WHERE tail=?1 AND created=?2').bind(tail, created).first();
+}
+async function custUpdate(env, b) {
+  const g = await custFind(env, b);
+  if (!g) return { ok: false, reason: 'not_found' };
+  const now = Date.now(), set = {}, what = [];
+  if (b.name != null) { const v = cleanTxt(b.name, 40); if (v.length < 2) return { ok: false, reason: 'name_required' }; if (v !== g.name) { set.name = v; what.push('שם') } }
+  if (b.uname != null) { const v = String(b.uname).trim(); if (v && !okUser(v)) return { ok: false, reason: 'bad_user' };
+    if (v && v.toLowerCase() !== String(g.uname || '').toLowerCase()) { const d = await env.DB.prepare('SELECT 1 FROM guests WHERE lower(uname)=lower(?1) AND h<>?2').bind(v, g.h).first(); if (d) return { ok: false, reason: 'user_taken' } }
+    if (v !== (g.uname || '')) { set.uname = v; what.push('שם משתמש') } }
+  if (b.email != null) { const v = String(b.email).trim().toLowerCase(); if (v && !okEmail(v)) return { ok: false, reason: 'bad_email' }; if (v !== (g.email || '')) { set.email = v; what.push('מייל') } }
+  if (b.note != null) { const v = cleanTxt(b.note, 300); if (v !== (g.note || '')) { set.note = v; what.push('הערה') } }
+  let exp = g.expires;
+  const add = Math.trunc(+b.addDays || 0);
+  if (add) { if (Math.abs(add) > 3650) return { ok: false, reason: 'bad_days' }; exp = (add > 0 ? Math.max(now, g.expires) : g.expires) + add * 864e5; what.push(`${add > 0 ? '+' : ''}${add} ימים`) }
+  if (b.expires != null && +b.expires > 0) { exp = +b.expires; what.push('תאריך סיום') }
+  if (exp !== g.expires) { set.expires = exp; set.expired_logged = 0 }
+  if (b.revoked != null && !!b.revoked !== !!g.revoked) { set.revoked = b.revoked ? 1 : 0; what.push(b.revoked ? 'בוטל' : 'הופעל מחדש') }
+  const keys = Object.keys(set);
+  if (!keys.length) return { ok: true, customer: custRow(g, now), changed: false };
+  await env.DB.prepare(`UPDATE guests SET ${keys.map((k, i) => `${k}=?${i + 2}`).join(', ')} WHERE h=?1`).bind(g.h, ...keys.map(k => set[k])).run();
+  await log(env, g.h, g.tail, set.name || g.name, 'edited', what.join(', '));
+  return { ok: true, changed: true, customer: custRow({ ...g, ...set }, now) };
+}
+// a new code for the same customer (the old one stops working); the log moves with it
+async function custReset(env, b) {
+  const g = await custFind(env, b);
+  if (!g) return { ok: false, reason: 'not_found' };
+  const code = genCode(), h = await sha(code), tail = code.slice(-4);
+  await env.DB.prepare('UPDATE guests SET h=?2, tail=?3 WHERE h=?1').bind(g.h, h, tail).run();
+  await env.DB.prepare('UPDATE events SET lic=?2, tail=?3 WHERE lic=?1').bind(g.h, h, tail).run();
+  await log(env, h, tail, g.name, 'code_reset', `…${g.tail} → …${tail}`);
+  return { ok: true, code, customer: custRow({ ...g, h, tail }, Date.now()) };
+}
+// the whole log, for the Excel export
+async function logAll(env, q) {
+  const n = Math.min(20000, Math.max(1, +q.get('limit') || 5000));
+  const rows = (await env.DB.prepare('SELECT t, tail, email, ev, detail FROM events ORDER BY t DESC LIMIT ?1').bind(n).all()).results || [];
+  return { ok: true, at: Date.now(), log: rows };
 }
 
 // delete one guest code for good (it stops working at once) and its log lines
