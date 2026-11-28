@@ -38,6 +38,7 @@ button:disabled{opacity:.6}
   <div id="msg" role="status" aria-live="polite"></div>
   <p id="probP" hidden style="margin:14px 0 0;text-align:center;font-size:15px"><a href="#" id="prob" style="color:var(--accent);font-weight:700">🆘 נתקלת בבעיה? לחץ כאן</a></p>
 </div>
+<script>addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__bip=e});</script>
 <script>
 (function(){var TO='';
   fetch('pro/config.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():{}}).then(function(c){var v=c&&c.contact;if(v&&!/^https?:/.test(v)&&/^[^\s@<>"']+@[^\s@<>"']+$/.test(v)){TO=v;document.getElementById('probP').hidden=false}}).catch(function(){});

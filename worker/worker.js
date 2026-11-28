@@ -11,6 +11,7 @@
 //   CONTENT_KEY     secret: base64 key of pro/app.enc (tools/build_pro.py --print-key)
 //   ADMIN_TOKEN     secret: long random code; typed once in the admin dashboard
 //   LS_API_KEY      secret: Lemon Squeezy API key (subscription status for the dashboard)
+//   TURNSTILE_SECRET secret, optional: Cloudflare Turnstile secret key; when set, the free-trial form must pass the bot check
 //   LS_STORE_ID     plain: your Lemon Squeezy store id (required; keys from other stores are refused)
 //   LS_PRODUCT_ID   plain, optional: only accept keys of this product
 //   ALLOWED_ORIGIN  plain, optional: default https://tomeramr.github.io
@@ -234,6 +235,20 @@ async function ensureCols(env) {
 const cleanTxt = (v, n) => String(v || '').replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, n);
 const okUser = u => /^[A-Za-z0-9_.\-֐-׿]{3,24}$/.test(u);
 const okEmail = e => e.length <= 120 && /^[^\s@<>"'`]+@[^\s@<>"'`]+\.[A-Za-z]{2,}$/.test(e);
+async function turnstileOk(env, token, req) {
+  token = String(token || '');
+  if (!token || token.length > 2048) return false;
+  const f = new FormData();
+  f.append('secret', env.TURNSTILE_SECRET);
+  f.append('response', token);
+  const ip = req.headers.get('CF-Connecting-IP');
+  if (ip) f.append('remoteip', ip);
+  try {
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: f });
+    const j = await r.json();
+    return !!(j && j.success);
+  } catch (e) { return false; }
+}
 async function trialStart(env, b, req) {
   await ensureCols(env);
   const name = cleanTxt(b.name, 40), uname = String(b.user || '').trim(), email = String(b.email || '').trim().toLowerCase();
@@ -241,6 +256,8 @@ async function trialStart(env, b, req) {
   if (!okUser(uname)) return { ok: false, reason: 'bad_user' };
   if (!okEmail(email)) return { ok: false, reason: 'bad_email' };
   if (b.consent !== true) return { ok: false, reason: 'consent' };
+  // bot check (Cloudflare Turnstile): required once TURNSTILE_SECRET is set in the Worker
+  if (env.TURNSTILE_SECRET && !(await turnstileOk(env, b.ts, req))) return { ok: false, reason: 'bad_captcha' };
   const ex = await env.DB.prepare('SELECT email, uname FROM guests WHERE email=?1 OR lower(uname)=lower(?2) LIMIT 1').bind(email, uname).first();
   if (ex) return { ok: false, reason: ex.email === email ? 'email_used' : 'user_taken' };
   // at most a few trials a day from the same network

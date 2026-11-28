@@ -71,7 +71,8 @@ button.ghost{background:transparent;color:var(--accent);border:1px solid var(--l
     <p class="hint" id="tUserH" data-t="tUserH">3 עד 24 תווים: אותיות, ספרות, נקודה, מקף או קו תחתון. אם תיתקל בבעיה, זה השם שתמסור לנו.</p>
     <label for="tMail" data-t="tMail">מייל</label>
     <input id="tMail" type="email" dir="ltr" autocomplete="email" maxlength="120" required>
-    <label class="chk" for="tOk"><input type="checkbox" id="tOk"><span data-t="tOk" data-h="1">קראתי ואני מסכים ל<a href="terms.html" target="_blank" rel="noopener">תקנון ולמדיניות הפרטיות</a>. השם, שם המשתמש והמייל נשמרים לצורך ניהול הניסיון ותמיכה.</span></label>
+    <div id="tTs" style="margin:8px 0"></div>
+    <label class="chk" for="tOk"><input type="checkbox" id="tOk"><span data-t="tOk" data-h="1">אני בן 18 ומעלה, קראתי ואני מסכים ל<a href="terms.html" target="_blank" rel="noopener">תקנון ולמדיניות הפרטיות</a>. השם, שם המשתמש והמייל נשמרים לצורך ניהול הניסיון ותמיכה.</span></label>
     <div class="row2"><button type="submit" id="tGo" data-t="tGo">התחל את הניסיון</button><button type="button" class="ghost" id="tBack" data-t="tBack">ביטול</button></div>
   </form>
   <section id="tDone" hidden aria-labelledby="tdT">
@@ -99,7 +100,8 @@ button.ghost{background:transparent;color:var(--accent);border:1px solid var(--l
   </nav>
   <p class="disc" data-t="disc">⚠️ הכלי מציג ניתוח טכני אוטומטי לצורכי מידע בלבד, ואינו ייעוץ השקעות.</p>
 </main>
-<script id="gd" type="application/json">{"v":2,"cfg":{"api":"https://candles-pro.tomeramr7.workers.dev","checkout":"","portal":"","contact":""}}</script>
+<script id="gd" type="application/json">{"v":2,"cfg":{"api":"https://candles-pro.tomeramr7.workers.dev","checkout":"","portal":"","contact":"tomeramr7@gmail.com","turnstile":"0x4AAAAAAGXhGpmY8QfVmcCI"}}</script>
+<script>addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__bip=e});</script>
 <script>
 (function(){
 const D=JSON.parse(document.getElementById('gd').textContent);
@@ -112,7 +114,7 @@ const EN={sub:'Technical analysis for stocks · developed by Tomer Amran',f1:'Ca
   buy:'💳 Buy a subscription',buyNote:'After you buy you\u2019ll get a <b>serial</b> (license key) by email. Paste it here:',lbl:'Serial (license key), trial code or guest code',go:'Sign in',
   trialBtn:'🎁 Start a 5-day free trial · no credit card',tfT:'🎁 Sign up for a 5-day trial',tfSub:'No credit card. At the end you get a personal sign-in code.',tName:'Full name',tUser:'Username',
   tUserH:'3 to 24 characters: letters, digits, dot, hyphen or underscore. If you run into a problem, this is the name you give us.',tMail:'Email',
-  tOk:'I have read and agree to the <a href="terms.html" target="_blank" rel="noopener">terms and privacy policy (Hebrew)</a>. Your name, username and email are kept to manage the trial and for support.',
+  tOk:'I am 18 or older, and I have read and agree to the <a href="terms.html" target="_blank" rel="noopener">terms and privacy policy (Hebrew)</a>. Your name, username and email are kept to manage the trial and for support.',
   tGo:'Start the trial',tBack:'Cancel',tdT:'✅ Your trial has started',tdKeep:'Keep this code. It is also saved on this device, but on another device you will need to type it.',tCopy:'📋 Copy the code',tMailMe:'📧 Email it to me',tEnter:'Open the app',prob:'🆘 Having trouble? Click here',
   terms:'Terms of use (Hebrew)',a11y:'Accessibility statement (Hebrew)',portal:'Manage or cancel subscription',contact:'Contact',disc:'⚠️ The tool shows automated technical analysis for information only, and is not investment advice.'};
 const MSG_EN={
@@ -131,7 +133,7 @@ const MSG_EN={
   name_required:'Type your full name.',bad_user:'The username needs 3 to 24 characters: letters, digits, dot, hyphen or underscore.',bad_email:'The email address doesn\u2019t look right.',
   consent:'To start the trial, tick the box that you agree to the terms.',email_used:'This email already had a trial. Forgot the code? Click "Having trouble?" and we will help.',
   user_taken:'This username is taken. Choose another.',trial_limit:'Too many sign-ups from this network today. Try tomorrow, or click "Having trouble?".',
-  trial_closed:'Trial sign-up isn\u2019t open yet. Try again soon, or click "Having trouble?".',signing:'⏳ Creating your trial…',copied:'✅ Copied',until:'Valid until {d}.',
+  trial_closed:'Trial sign-up isn\u2019t open yet. Try again soon, or click "Having trouble?".',signing:'⏳ Creating your trial…',captcha:'⏳ One moment, checking that you are not a robot. Try again in a second.',bad_captcha:'🤖 The robot check failed. Reload the page and try again.',copied:'✅ Copied',until:'Valid until {d}.',
   empty:'Paste the serial from the email.',checking:'⏳ Checking the serial…',verifying:'⏳ Verifying the serial…',inn:'✅ Signing in…'};
 const MSG={
   invalid:'❌ הסיריאל לא נמצא. העתק אותו במלואו מהמייל ונסה שוב.',
@@ -149,7 +151,7 @@ const MSG={
   name_required:'כתוב את השם המלא שלך.',bad_user:'שם המשתמש צריך 3 עד 24 תווים: אותיות, ספרות, נקודה, מקף או קו תחתון.',bad_email:'כתובת המייל לא נראית תקינה.',
   consent:'כדי להתחיל, סמן שקראת ואתה מסכים לתקנון.',email_used:'למייל הזה כבר היה ניסיון. שכחת את הקוד? לחץ על "נתקלת בבעיה?" ונעזור לך.',
   user_taken:'שם המשתמש הזה תפוס. בחר שם אחר.',trial_limit:'היום כבר נרשמו יותר מדי ניסיונות מהרשת הזו. נסה מחר, או לחץ על "נתקלת בבעיה?".',
-  trial_closed:'ההרשמה לניסיון עוד לא פתוחה. נסה שוב בקרוב, או לחץ על "נתקלת בבעיה?".',signing:'⏳ פותח לך ניסיון…',copied:'✅ הועתק',until:'בתוקף עד {d}.',
+  trial_closed:'ההרשמה לניסיון עוד לא פתוחה. נסה שוב בקרוב, או לחץ על "נתקלת בבעיה?".',signing:'⏳ פותח לך ניסיון…',captcha:'⏳ רגע, בודקים שאתה לא רובוט. נסה שוב בעוד שנייה.',bad_captcha:'🤖 בדיקת הרובוט נכשלה. רענן את הדף ונסה שוב.',copied:'✅ הועתק',until:'בתוקף עד {d}.',
   empty:'הדבק את הסיריאל מהמייל.',checking:'⏳ בודק את הסיריאל…',verifying:'⏳ מאמת את הסיריאל…',inn:'✅ נכנס…'
 };
 if(LANG==='en'){Object.assign(MSG,MSG_EN);document.documentElement.lang='en';document.documentElement.dir='ltr';document.title='Candle Reader Pro – sign in';
@@ -195,7 +197,14 @@ function wipe(){LSr('pro_saved');['pro_html','pro_html_he','pro_html_en'].forEac
 })();
 // ---------- free trial ----------
 const tShow=on=>{$('tf').hidden=!on;$('trialBtn').hidden=on;$('trialBtn').setAttribute('aria-expanded',on?'true':'false');if(on)$('tName').focus();else $('trialBtn').focus()};
-$('trialBtn').addEventListener('click',()=>tShow(true));
+let TS_TOKEN='',TS_ID=null;
+function tsInit(){const key=CFG.turnstile;if(!key||!/^0x[A-Za-z0-9_-]{10,}$/.test(key))return;
+  const draw=()=>{if(TS_ID!==null||!window.turnstile)return;TS_ID=turnstile.render('#tTs',{sitekey:key,language:LANG==='en'?'en':'he',appearance:'interaction-only',
+    callback:t=>{TS_TOKEN=t},'expired-callback':()=>{TS_TOKEN=''},'error-callback':()=>{TS_TOKEN=''}})};
+  if(window.turnstile)return draw();if(document.getElementById('tsJs'))return;
+  window.__tsReady=draw;const sc=document.createElement('script');sc.id='tsJs';sc.async=true;sc.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=__tsReady';document.head.appendChild(sc)}
+function tsReset(){TS_TOKEN='';try{if(TS_ID!==null)turnstile.reset(TS_ID)}catch(e){}}
+$('trialBtn').addEventListener('click',()=>{tShow(true);tsInit()});
 $('tBack').addEventListener('click',()=>{tShow(false);msg('')});
 let TRIAL=null;
 const fdate=t=>new Date(t).toLocaleDateString(LANG==='en'?'en-GB':'he-IL',{day:'numeric',month:'long',year:'numeric'});
@@ -207,8 +216,9 @@ $('tf').addEventListener('submit',async ev=>{ev.preventDefault();
   if(!/^[A-Za-z0-9_.\-\u0590-\u05FF]{3,24}$/.test(user))return fail('bad_user',$('tUser'));
   if(!/^[^\s@<>"'`]+@[^\s@<>"'`]+\.[A-Za-z]{2,}$/.test(email))return fail('bad_email',$('tMail'));
   if(!$('tOk').checked)return fail('consent',$('tOk'));
+  if(CFG.turnstile&&!TS_TOKEN){tsInit();return fail('captcha',null)}
   const b=$('tGo');b.disabled=true;msg(MSG.signing);
-  try{const j=await call('/trial',{name,user,email,consent:true,dev:devName(),lang:LANG});
+  try{const j=await call('/trial',{name,user,email,consent:true,dev:devName(),lang:LANG,ts:TS_TOKEN});tsReset();
     if(!j.ok){const r=j.reason==='not_found'?'trial_closed':j.reason;fail(r,r==='user_taken'||r==='bad_user'?$('tUser'):r==='email_used'||r==='bad_email'?$('tMail'):null);b.disabled=false;return}
     const t={code:j.code,until:j.until,email,user,name};LSs('pro_trial',JSON.stringify(t));msg('');trialDone(t)}
   catch(e){fail(e&&e.reason);b.disabled=false}});
